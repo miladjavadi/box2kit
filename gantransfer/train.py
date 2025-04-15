@@ -35,8 +35,8 @@ def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples:
         # reshape waveform into blocks
         blocks = torch.reshape(waveform, (-1, block_length_in_samples))
         dataset = torch.cat((dataset, blocks), dim=0)
-        dataset = dataset.unsqueeze(1)
     
+    dataset = dataset.unsqueeze(1)
     return dataset
 
 def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str):
@@ -130,12 +130,12 @@ def main(args):
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
-        dummy_frame = dac_model.encode(dataloader[0][0].unsqueeze(0))[0]
+        dummy_frame = dac_model.encode(dataloader.dataset[0][0].unsqueeze(0))[0]
         block_length_in_frames = dummy_frame.shape[2]
         output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
 
     gen_model = Generator().to(device)
-    discr_model = Discriminator().to(device)
+    discr_model = Discriminator(output_block_length_in_samples, block_length_in_frames).to(device)
 
     training_procedure(gen_model, discr_model, dac_model, dataloader, max_epochs)
 
