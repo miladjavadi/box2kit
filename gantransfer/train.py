@@ -109,13 +109,13 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
             gen_optimizer.step()
 
 def main(args):
-    query_dir = args.querydir[0]
-    target_dir = args.targetdir[0]
-    tempo = args.tempo[0]
-    subdivs = args.subdiv[0]
-    batch_size = args.batchsize[0]
-    max_epochs = args.maxepochs[0]
-    chkpt_dir = args.chkptdir[0]
+    query_dir = args.querydir
+    target_dir = args.targetdir
+    tempo = args.tempo
+    subdivs = args.subdiv
+    batch_size = args.batchsize
+    max_epochs = args.maxepochs
+    chkpt_dir = args.chkptdir
 
     timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
@@ -147,13 +147,13 @@ if __name__ == "__main__":
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
 
-    parser.add_argument("--querydir", help="Location of query audio files.", type=str, metavar="path", nargs=1, required=True)
-    parser.add_argument("--targetdir", help="Location of target audio files.", type=str, metavar="path", nargs=1, required=True)
-    parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", nargs=1, default=90)
+    parser.add_argument("--querydir", help="Location of query audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("--targetdir", help="Location of target audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", nargs=1, default=8)
-    parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", nargs=1, default=16)
-    parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", nargs=1, default=1000)
-    parser.add_argument("--chkptdir", help="Location of save checkpoints.", type=str, metavar="path", nargs=1, default="models")
+    parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
+    parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
+    parser.add_argument("--chkptdir", help="Location of save checkpoints.", type=str, metavar="path", default="models")
     args=parser.parse_args()
     main(args)
 
