@@ -139,7 +139,7 @@ def main(args):
 
     training_procedure(gen_model, discr_model, dac_model, dataloader, max_epochs, device)
 
-    torch.save({"gen_model": gen_model.state_dict(), "discr_model": discr_model.state_dict(), "block_length_in_samples": output_block_length_in_samples, "block_length_in_frames": block_length_in_frames}, f"{chkpt_dir}/model_{timecode}.pth")
+    torch.save({"gen_model": gen_model.state_dict(), "discr_model": discr_model.state_dict(), "block_length_in_samples": output_block_length_in_samples, "block_length_in_frames": block_length_in_frames}, f"gantransfer/{chkpt_dir}/model_{timecode}.pth")
 
 
 if __name__ == "__main__":
