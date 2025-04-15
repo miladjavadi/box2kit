@@ -76,16 +76,16 @@ class Discriminator(nn.Module):
         return output_probability
 
 class PairedWaveformDataset(torch.utils.data.Dataset):
-    def __init__(self, target_data, corpus_data):
-        if target_data.shape != corpus_data.shape:
-            raise Exception(f"Target dataset and corpus dataset must have the same size (target dataset has shape {target_data.shape}, while corpus dataset has shape {corpus_data.shape})")
+    def __init__(self, query_data, target_data):
+        if query_data.shape != target_data.shape:
+            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {query_data.shape}, while target dataset has shape {target_data.shape})")
+        self.query_data = query_data
         self.target_data = target_data
-        self.corpus_data = corpus_data
     
     def __len__(self):
-        return self.target_data.shape[0]
+        return self.query_data.shape[0]
     
     def __getitem__(self, idx):
-        x = self.target_data[idx]
-        y = self.corpus_data[idx]
+        x = self.query_data[idx]
+        y = self.target_data[idx]
         return x, y

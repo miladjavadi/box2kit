@@ -39,17 +39,17 @@ def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples:
     
     return dataset
 
-def prepare_dataloader(target_dir: str, corpus_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str):
+def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str):
+    query_files = os.listdir(query_dir)
     target_files = os.listdir(target_dir)
-    corpus_files = os.listdir(corpus_dir)
 
     # load in all waveforms
+    query_waveforms = [load_mono((f"{query_dir}/{file}").to(device), model_sr) for file in query_files if file[-4:] == ".wav"]
     target_waveforms = [load_mono((f"{target_dir}/{file}").to(device), model_sr) for file in target_files if file[-4:] == ".wav"]
-    corpus_waveforms = [load_mono((f"{corpus_dir}/{file}").to(device), model_sr) for file in corpus_files if file[-4:] == ".wav"]
 
+    query_dataset = reshape_dataset(query_waveforms, block_length_in_samples)
     target_dataset = reshape_dataset(target_waveforms, block_length_in_samples)
-    corpus_dataset = reshape_dataset(corpus_waveforms, block_length_in_samples)
-    paired_dataset = PairedWaveformDataset(target_dataset, corpus_dataset)
+    paired_dataset = PairedWaveformDataset(query_dataset, target_dataset)
     dataloader = torch.utils.data.DataLoader(paired_dataset, batch_size=batch_size, shuffle=True)
 
     return dataloader
@@ -66,23 +66,23 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
     fake_label = 0
 
     for i in range(epochs):
-        for batch_nr, (target, ref) in enumerate(dataloader):
+        for batch_nr, (query, target) in enumerate(dataloader):
             print(f"Epoch: {i+1}/{epochs}, Batch: {batch_nr+1}/{len(dataloader)}")
 
             with torch.no_grad():
+                Z_query = dac_model.encode(query)[0]
                 Z_target = dac_model.encode(target)[0]
-                Z_ref = dac_model.encode(ref)[0]
 
             # train discriminator
-            Z_transformed = gen_model(Z_target).detach()
+            Z_transformed = gen_model(Z_query).detach()
             
             with torch.no_grad():
                 transformed_decoded = dac_model.decode(Z_transformed)
 
-            ref = ref[:,:,:transformed_decoded.shape[2]] # trim tail of reference that is lost when decoding
+            target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
             
-            d_real = discr_model(Z_target, ref)
-            d_fake = discr_model(Z_target, transformed_decoded)
+            d_real = discr_model(Z_query, target)
+            d_fake = discr_model(Z_query, transformed_decoded)
 
             real_labels = torch.full(d_real.shape, real_label, device=discr_model.device, dtype=torch.float32)
             real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
@@ -97,10 +97,10 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
 
             # train generator
             
-            Z_transformed = gen_model(Z_target)
-            embedding_loss = embedding_loss_fn(Z_transformed, Z_ref)
+            Z_transformed = gen_model(Z_query)
+            embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
 
-            d_fake = discr_model(Z_target, transformed_decoded)
+            d_fake = discr_model(Z_query, transformed_decoded)
             fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
             gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
@@ -109,8 +109,8 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
             gen_optimizer.step()
 
 def main(args):
+    query_dir = args.querydir
     target_dir = args.targetdir
-    corpus_dir = args.corpusdir
     tempo = args.tempo
     subdivs = args.subdiv
     batch_size = args.batchsize
@@ -125,7 +125,7 @@ def main(args):
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    dataloader = prepare_dataloader(target_dir, corpus_dir, block_length_in_samples, batch_size, model_sr, device)
+    dataloader = prepare_dataloader(query_dir, target_dir, block_length_in_samples, batch_size, model_sr, device)
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
@@ -143,12 +143,12 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired target/corpus datasets.\n"
+    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
-    "For instance: <target_dir>/x.wav should have a corresponding <corpus_dir>/x.wav.")
+    "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
 
+    parser.add_argument("--querydir", help="Location of query audio files.", type=str, metavar="path", nargs=1, required=True)
     parser.add_argument("--targetdir", help="Location of target audio files.", type=str, metavar="path", nargs=1, required=True)
-    parser.add_argument("--corpusdir", help="Location of corpus audio files.", type=str, metavar="path", nargs=1, required=True)
     parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", nargs=1, default=90)
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", nargs=1, default=8)
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", nargs=1, default=16)
