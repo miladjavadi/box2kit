@@ -117,7 +117,7 @@ def main(args):
     max_epochs = args.maxepochs
     chkpt_dir = args.chkptdir
 
-    timecode = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
