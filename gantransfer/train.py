@@ -109,13 +109,13 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
             gen_optimizer.step()
 
 def main(args):
-    query_dir = args.querydir
-    target_dir = args.targetdir
-    tempo = args.tempo
-    subdivs = args.subdiv
-    batch_size = args.batchsize
-    max_epochs = args.maxepochs
-    chkpt_dir = args.chkptdir
+    query_dir = args.querydir[0]
+    target_dir = args.targetdir[0]
+    tempo = args.tempo[0]
+    subdivs = args.subdiv[0]
+    batch_size = args.batchsize[0]
+    max_epochs = args.maxepochs[0]
+    chkpt_dir = args.chkptdir[0]
 
     timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
