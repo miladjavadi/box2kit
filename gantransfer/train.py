@@ -44,8 +44,8 @@ def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples:
     target_files = os.listdir(target_dir)
 
     # load in all waveforms
-    query_waveforms = [load_mono((f"{query_dir}/{file}").to(device), model_sr) for file in query_files if file[-4:] == ".wav"]
-    target_waveforms = [load_mono((f"{target_dir}/{file}").to(device), model_sr) for file in target_files if file[-4:] == ".wav"]
+    query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr).to(device) for file in query_files if file[-4:] == ".wav"]
+    target_waveforms = [load_mono((f"{target_dir}/{file}"), model_sr).to(device) for file in target_files if file[-4:] == ".wav"]
 
     query_dataset = reshape_dataset(query_waveforms, block_length_in_samples)
     target_dataset = reshape_dataset(target_waveforms, block_length_in_samples)
