@@ -54,7 +54,7 @@ def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples:
 
     return dataloader
 
-def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
+def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, device):
     embedding_loss_fn = nn.MSELoss()
     adversarial_loss_fn = nn.BCELoss()
     lambda_embedding = 100
@@ -84,10 +84,10 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs):
             d_real = discr_model(Z_query, target)
             d_fake = discr_model(Z_query, transformed_decoded)
 
-            real_labels = torch.full(d_real.shape, real_label, device=discr_model.device, dtype=torch.float32)
+            real_labels = torch.full(d_real.shape, real_label, device=device, dtype=torch.float32)
             real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
 
-            fake_labels = torch.full(d_fake.shape, fake_label, device=discr_model.device, dtype=torch.float32)
+            fake_labels = torch.full(d_fake.shape, fake_label, device=device, dtype=torch.float32)
             fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
             discr_loss = real_adversarial_loss + fake_adversarial_loss
@@ -137,7 +137,7 @@ def main(args):
     gen_model = Generator().to(device)
     discr_model = Discriminator(output_block_length_in_samples, block_length_in_frames).to(device)
 
-    training_procedure(gen_model, discr_model, dac_model, dataloader, max_epochs)
+    training_procedure(gen_model, discr_model, dac_model, dataloader, max_epochs, device)
 
     torch.save({"gen_model": gen_model.state_dict(), "discr_model": discr_model.state_dict(), "block_length_in_samples": output_block_length_in_samples, "block_length_in_frames": block_length_in_frames}, f"{chkpt_dir}/model_{timecode}.pth")
 
