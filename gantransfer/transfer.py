@@ -22,7 +22,7 @@ def main(args):
     gen_state, _, block_length_in_samples, _ = torch.load(chkpt_path)
 
     gen_model = Generator().to(device)
-    gen_model.load_state_dict(gen_state, weights_only=True)
+    gen_model.load_state_dict(gen_state)
 
     gen_model.eval()
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
