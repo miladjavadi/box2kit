@@ -49,7 +49,7 @@ def main(args):
 
     reconstructed_waveform = reconstruction.flatten()
 
-    torchaudio.save(f"{input_path}_transformed.wav", reconstructed_waveform.unsqueeze(0), model_sr)
+    torchaudio.save(f"{input_path}_transformed.wav", reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
 
 
 
