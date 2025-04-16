@@ -24,6 +24,8 @@ def main(args):
     gen_model = Generator().to(device)
     gen_model.load_state_dict(save_state["gen_model"])
 
+    block_length_in_samples = save_state["block_length_in_samples"]
+
     gen_model.eval()
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
     model_sr = dac_model.sample_rate
