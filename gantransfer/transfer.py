@@ -16,6 +16,7 @@ from train import load_mono
 def main(args):
     input_path = args.input
     chkpt_path = args.chkpt
+    output_file_name = args.out
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -49,7 +50,7 @@ def main(args):
 
     reconstructed_waveform = reconstruction.flatten()
 
-    torchaudio.save(f"{input_path}_transformed.wav", reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
+    torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
 
 
 
@@ -60,5 +61,6 @@ if __name__ == "__main__":
 
     parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
     parser.add_argument("--chkpt", help="Path to model checkpoint.", type=str, metavar="path", required=True)
+    parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
     args=parser.parse_args()
     main(args)
