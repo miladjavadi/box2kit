@@ -17,13 +17,16 @@ def main(args):
     input_path = args.input
     chkpt_path = args.chkpt
 
-    gen_model, discr_model, block_length_in_samples, block_length_in_frames = torch.load(chkpt_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    gen_state, _, block_length_in_samples, _ = torch.load(chkpt_path)
+
+    gen_model = Generator().to(device)
+    gen_model.load_state_dict(gen_state, weights_only=True)
+
     gen_model.eval()
-    discr_model.eval()
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
     model_sr = dac_model.sample_rate
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     input_waveform = load_mono(input_path, model_sr).to(device)
     # trim waveform to whole number of block lengths
