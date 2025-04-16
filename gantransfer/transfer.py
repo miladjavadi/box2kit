@@ -39,16 +39,14 @@ def main(args):
     input_blocks = torch.reshape(input_waveform, (-1, block_length_in_samples))
     input_blocks = input_blocks.unsqueeze(1)
 
-    # with torch.inference_mode():
-    #     input_embeddings = dac_model.encode(input_blocks)[0]
+    with torch.inference_mode():
+        input_embeddings = dac_model.encode(input_blocks)[0]
 
-    #     transformed_embeddings = gen_model(input_embeddings)
+        transformed_embeddings = gen_model(input_embeddings)
 
-    #     transformed_embeddings = dac_model.quantizer(transformed_embeddings, None)[0]
+        transformed_embeddings = dac_model.quantizer(transformed_embeddings, None)[0]
 
-    #     reconstruction = dac_model.decode(transformed_embeddings)
-
-    reconstruction = input_blocks
+        reconstruction = dac_model.decode(transformed_embeddings)
 
     reconstructed_waveform = reconstruction.flatten()
 
