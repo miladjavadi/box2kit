@@ -66,8 +66,9 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
     fake_label = 0
 
     for i in range(epochs):
+        print(f"Epoch: {i+1}/{epochs}")
         for batch_nr, (query, target) in enumerate(dataloader):
-            print(f"Epoch: {i+1}/{epochs}, Batch: {batch_nr+1}/{len(dataloader)}")
+            # print(f"Epoch: {i+1}/{epochs}, Batch: {batch_nr+1}/{len(dataloader)}")
 
             with torch.no_grad():
                 Z_query = dac_model.encode(query)[0]
@@ -108,7 +109,7 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
             gen_loss.backward()
             gen_optimizer.step()
 
-            print(f"Discriminator loss: {discr_loss}, Generator loss: {gen_loss}")
+            # print(f"Discriminator loss: {discr_loss}, Generator loss: {gen_loss}")
 
 def main(args):
     query_dir = args.querydir
