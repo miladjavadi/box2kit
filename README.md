@@ -4,5 +4,5 @@ jupyter notebooks should be run from the root directory.
 
 to do list:
 - [x] rewrite gan model as python module/script
-- [ ] write script to transform new audio using trained model
+- [x] write script to transform new audio using trained model
 - [ ] integrate models and training procedure into a LightningModule
