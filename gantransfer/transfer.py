@@ -17,6 +17,7 @@ def main(args):
     input_path = args.input
     chkpt_path = args.chkpt
     output_file_name = args.out
+    requantize = args.requantize
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -44,7 +45,8 @@ def main(args):
 
         transformed_embeddings = gen_model(input_embeddings)
 
-        transformed_embeddings = dac_model.quantizer(transformed_embeddings, None)[0]
+        if requantize:
+            transformed_embeddings = dac_model.quantizer(transformed_embeddings, None)[0]
 
         reconstruction = dac_model.decode(transformed_embeddings)
 
@@ -62,5 +64,6 @@ if __name__ == "__main__":
     parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
     parser.add_argument("--chkpt", help="Path to model checkpoint.", type=str, metavar="path", required=True)
     parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
+    parser.add_argument("--requantize", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
     args=parser.parse_args()
     main(args)
