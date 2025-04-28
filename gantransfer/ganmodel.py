@@ -6,6 +6,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
+import lightning as L
 
 import dac
 import torchaudio
@@ -89,3 +90,78 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         x = self.query_data[idx]
         y = self.target_data[idx]
         return x, y
+
+class DacGan(L.LightningModule):
+    def __init__(self, generator, discriminator, codec, device):
+        super().__init__()
+        self.generator = generator
+        self.discriminator = discriminator
+        self.codec = codec
+        self.device = device
+
+    def forward(self, input):
+        return self.generator(input)
+    
+    def training_step(self, batch):
+        input_waveforms, _ = batch
+        query, target = input_waveforms
+
+        gen_optimizer, discr_optimizer = self.optimizers()
+
+        embedding_loss_fn = nn.MSELoss()
+        adversarial_loss_fn = nn.BCELoss()
+        lambda_embedding = 100
+
+        real_label = 1
+        fake_label = 0
+
+        with torch.no_grad():
+            Z_query = self.codec.encode(query)[0]
+            Z_target = self.codec.encode(target)[0]
+
+        # train discriminator
+        self.toggle_optimizer(discr_optimizer)
+
+        Z_transformed = self.generator(Z_query).detach()
+        
+        with torch.no_grad():
+            transformed_decoded = self.codec.decode(Z_transformed)
+
+        target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
+        
+        d_real = self.discriminator(Z_query, target)
+        d_fake = self.discriminator(Z_query, transformed_decoded)
+
+        real_labels = torch.full(d_real.shape, real_label, device=self.device, dtype=torch.float32)
+        real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
+
+        fake_labels = torch.full(d_fake.shape, fake_label, device=self.device, dtype=torch.float32)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+
+        discr_loss = real_adversarial_loss + fake_adversarial_loss
+        self.log("discr_loss", discr_loss, prog_bar=True)
+        discr_optimizer.zero_grad()
+        self.manual_backward(discr_loss)
+        discr_optimizer.step()
+        self.untoggle_optimizer(discr_optimizer)
+
+        # train generator
+        self.toggle_optimizer(gen_optimizer)
+
+        Z_transformed = self.generator(Z_query)
+        embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
+
+        d_fake = self.discriminator(Z_query, transformed_decoded)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+
+        gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
+        self.log("gen_loss", gen_loss, prog_bar=True)
+        gen_optimizer.zero_grad()
+        self.manual_backwards(gen_loss)
+        gen_optimizer.step()
+        self.untoggle_optimizer(gen_optimizer)
+    
+    def configure_optimizers(self):
+        gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        return [gen_optimizer, discr_optimizer], []
