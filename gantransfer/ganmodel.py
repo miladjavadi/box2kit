@@ -6,7 +6,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
-import lightning as L
+import pytorch_lightning as pl
 
 import dac
 import torchaudio
@@ -91,7 +91,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         y = self.target_data[idx]
         return x, y
 
-class DacGan(L.LightningModule):
+class DACGAN(pl.LightningModule):
     def __init__(self, generator, discriminator, codec, device):
         super().__init__()
         self.generator = generator
@@ -160,6 +160,9 @@ class DacGan(L.LightningModule):
         self.manual_backwards(gen_loss)
         gen_optimizer.step()
         self.untoggle_optimizer(gen_optimizer)
+    
+    def validation_step(self, batch):
+        pass
     
     def configure_optimizers(self):
         gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))

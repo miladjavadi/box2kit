@@ -7,10 +7,11 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import datetime
+import pytorch_lightning as pl
 
 import dac
 import torchaudio
-from ganmodel import Generator, Discriminator, PairedWaveformDataset
+from ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
@@ -147,7 +148,10 @@ def main(args):
         gen_model.load_state_dict(chkpt["gen_model"])
         discr_model.load_state_dict(chkpt["discr_model"])
 
-    training_procedure(gen_model, discr_model, dac_model, dataloader, max_epochs, device)
+    gan = DACGAN(gen_model, discr_model, dac_model, device)
+    trainer = pl.trainer(accelerator="auto", devices=1, max_epochs=max_epochs)
+
+    trainer.fit(gan, train_dataloaders=dataloader)
 
     torch.save({"gen_model": gen_model.state_dict(), "discr_model": discr_model.state_dict(), "block_length_in_samples": block_length_in_samples, "output_block_length_in_samples": output_block_length_in_samples, "block_length_in_frames": block_length_in_frames}, f"{chkpt_dir}/model_{timecode}.pth")
 
