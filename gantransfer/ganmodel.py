@@ -6,7 +6,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
-import pytorch_lightning as pl
+import lightning as pl
 
 import dac
 import torchaudio
