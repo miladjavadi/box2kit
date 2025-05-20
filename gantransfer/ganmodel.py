@@ -92,11 +92,11 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         return x, y
 
 class DACGAN(pl.LightningModule):
-    def __init__(self, generator, discriminator, codec, device, block_length_in_samples, lambda_embedding=1):
+    def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1):
         super().__init__()
-        self.generator = generator
-        self.discriminator = discriminator
+        self.generator, self.discriminator = self.initialize_models()
         self.codec = codec
+
         self.tensor_device = device
 
         self.real_label = 1
@@ -105,6 +105,11 @@ class DACGAN(pl.LightningModule):
         self.lambda_embedding = lambda_embedding
 
         self.block_length_in_samples = block_length_in_samples # needed for inference
+
+        # needed to re-initialize discriminator
+        self.output_block_length_in_samples = output_block_length_in_samples
+        self.block_length_in_frames = block_length_in_frames
+
         # self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
 
@@ -113,7 +118,14 @@ class DACGAN(pl.LightningModule):
         self.codec.eval()
         self.codec.requires_grad_(False)
 
-        self.save_hyperparameters("block_length_in_samples", "lambda_embedding")
+        self.save_hyperparameters("block_length_in_samples", "lambda_embedding", "output_block_length_in_samples", "block_length_in_frames")
+
+    def initialize_models(self):
+        gen_model = Generator().to(self.tensor_device)
+        discr_model = Discriminator(self.output_block_length_in_samples, self.block_length_in_frames).to(self.tensor_device)
+        # codec = dac.DAC.load(dac.utils.download()).to(self.tensor_device)
+
+        return gen_model, discr_model#, codec
 
     def forward(self, input):
         return self.generator(input)
@@ -191,8 +203,8 @@ class DACGAN(pl.LightningModule):
     def on_validation_epoch_start(self):
         self.codec.eval()
     
-    def on_save_checkpoint(self, checkpoint):
-        # Remove the evaluator's weights from the checkpoint's state_dict
-        keys_to_remove = [k for k in checkpoint['state_dict'] if k.startswith('codec.')]
-        for k in keys_to_remove:
-            del checkpoint['state_dict'][k]
+    # def on_save_checkpoint(self, checkpoint):
+    #     # Remove the evaluator's weights from the checkpoint's state_dict
+    #     keys_to_remove = [k for k in checkpoint['state_dict'] if k.startswith('codec.')]
+    #     for k in keys_to_remove:
+    #         del checkpoint['state_dict'][k]

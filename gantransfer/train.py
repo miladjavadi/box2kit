@@ -141,18 +141,15 @@ def main(args):
         block_length_in_frames = dummy_frame.shape[2]
         output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
 
-    gen_model = Generator().to(device)
-    discr_model = Discriminator(output_block_length_in_samples, block_length_in_frames).to(device)
-
     # load from previously saved checkpoint
     if chkpt_load is not None:
         # chkpt = torch.load(chkpt_load)
         # gen_model.load_state_dict(chkpt["gen_model"])
         # discr_model.load_state_dict(chkpt["discr_model"])
-        gan = DACGAN.load_from_checkpoint(chkpt_load)
+        gan = DACGAN.load_from_checkpoint(chkpt_load, codec=dac_model, device=device, block_length_in_samples=block_length_in_samples, output_block_length_in_samples=output_block_length_in_samples, block_length_in_frames=block_length_in_frames, lambda_embedding=lambda_embedding)
 
     else:
-        gan = DACGAN(gen_model, discr_model, dac_model, device, block_length_in_samples, lambda_embedding=lambda_embedding) # initialize new model
+        gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     
     # trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
