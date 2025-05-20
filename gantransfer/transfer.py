@@ -31,7 +31,7 @@ def main(args):
     # dac_model = dac.DAC.load(dac.utils.download()).to(device)
     # model_sr = dac_model.sample_rate
 
-    gan = DACGAN.load_from_checkpoint(chkpt_path)
+    gan = DACGAN.load_from_checkpoint(chkpt_path, Generator().to(device), Discriminator().to(device), dac.DAC.load(dac.utils.download()).to(device), device, 1, 1)
 
     gen_model = gan.generator
     dac_model = gan.codec
@@ -60,8 +60,6 @@ def main(args):
     reconstructed_waveform = reconstruction.flatten()
 
     torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
-
-
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.\n")
