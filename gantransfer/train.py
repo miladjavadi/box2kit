@@ -122,6 +122,7 @@ def main(args):
     max_epochs = args.maxepochs
     # chkpt_dir = args.chkptdir
     chkpt_load = args.loadchkpt
+    lambda_embedding = args.lemb
 
     timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
@@ -151,7 +152,7 @@ def main(args):
         gan = DACGAN.load_from_checkpoint(chkpt_load)
 
     else:
-        gan = DACGAN(gen_model, discr_model, dac_model, device) # initialize new model
+        gan = DACGAN(gen_model, discr_model, dac_model, device, lambda_embedding=lambda_embedding) # initialize new model
     
     # trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
@@ -174,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
     # parser.add_argument("--chkptdir", help="Training logs root dir.", type=str, metavar="path", default=None)
     parser.add_argument("--loadchkpt", help="Resume training from checkpoint in path", type=str, metavar="checkpoint_path", default=None)
+    parser.add_argument("--lemb", help="Set importance of embedding loss in discriminator cost function", type=float, metavar="lambda", default=1)
     args=parser.parse_args()
     main(args)
 

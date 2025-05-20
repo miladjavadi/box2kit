@@ -92,7 +92,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         return x, y
 
 class DACGAN(pl.LightningModule):
-    def __init__(self, generator, discriminator, codec, device):
+    def __init__(self, generator, discriminator, codec, device, lambda_embedding=1):
         super().__init__()
         self.generator = generator
         self.discriminator = discriminator
@@ -101,6 +101,8 @@ class DACGAN(pl.LightningModule):
 
         self.real_label = 1
         self.fake_label = 0
+
+        self.lambda_embedding = lambda_embedding
 
         # self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
@@ -121,7 +123,6 @@ class DACGAN(pl.LightningModule):
 
         embedding_loss_fn = nn.MSELoss()
         adversarial_loss_fn = nn.BCELoss()
-        lambda_embedding = 0.5
 
         with torch.no_grad():
             Z_query = self.codec.encode(query)[0]
@@ -162,7 +163,7 @@ class DACGAN(pl.LightningModule):
         d_fake = self.discriminator(Z_query, transformed_decoded)
         fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
-        gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
+        gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
         self.log("gen_loss", gen_loss, prog_bar=True)
         gen_optimizer.zero_grad()
         self.manual_backward(gen_loss)
