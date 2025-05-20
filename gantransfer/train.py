@@ -120,7 +120,7 @@ def main(args):
     subdivs = args.subdiv
     batch_size = args.batchsize
     max_epochs = args.maxepochs
-    chkpt_dir = args.chkptdir
+    # chkpt_dir = args.chkptdir
     chkpt_load = args.loadchkpt
 
     timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
     parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
     # parser.add_argument("--chkptdir", help="Training logs root dir.", type=str, metavar="path", default=None)
-    parser.add_argument("--loadchkpt", help="Resume training from checkpoint in checkpoint directory", type=str, metavar="checkpoint_path", default=None)
+    parser.add_argument("--loadchkpt", help="Resume training from checkpoint in path", type=str, metavar="checkpoint_path", default=None)
     args=parser.parse_args()
     main(args)
 
