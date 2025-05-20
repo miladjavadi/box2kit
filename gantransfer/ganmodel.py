@@ -113,6 +113,7 @@ class DACGAN(pl.LightningModule):
     
     def training_step(self, batch):
         input_waveforms, _ = batch
+        print(len(input_waveforms))
         query, target = input_waveforms
 
         gen_optimizer, discr_optimizer = self.optimizers()
