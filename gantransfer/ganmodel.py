@@ -106,6 +106,7 @@ class DACGAN(pl.LightningModule):
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
 
         self.automatic_optimization = False
+        self.codec.requires_grad_(False)
 
     def forward(self, input):
         return self.generator(input)
@@ -173,3 +174,12 @@ class DACGAN(pl.LightningModule):
         gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))
         discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
         return [gen_optimizer, discr_optimizer], []
+    
+    def on_train_start(self):
+        self.codec.eval()
+
+    def on_fit_start(self):
+        self.codec.eval()
+    
+    def on_validation_start(self):
+        self.codec.eval()
