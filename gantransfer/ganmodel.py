@@ -166,7 +166,7 @@ class DACGAN(pl.LightningModule):
         gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
         self.log("gen_loss", gen_loss, prog_bar=True)
         gen_optimizer.zero_grad()
-        self.manual_backwards(gen_loss)
+        self.manual_backward(gen_loss)
         gen_optimizer.step()
         self.untoggle_optimizer(gen_optimizer)
     
