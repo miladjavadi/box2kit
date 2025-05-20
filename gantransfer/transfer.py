@@ -10,7 +10,7 @@ import datetime
 
 import dac
 import torchaudio
-from ganmodel import Generator, Discriminator, PairedWaveformDataset
+from ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
 from train import load_mono
 
 def main(args):
@@ -21,15 +21,22 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    save_state = torch.load(chkpt_path)
+    # gen_model = Generator().to(device)
+    # discr_model = Discriminator().to(device)
+    # # gen_model.load_state_dict(save_state["gen_model"])
 
-    gen_model = Generator().to(device)
-    gen_model.load_state_dict(save_state["gen_model"])
+    # # block_length_in_samples = save_state["block_length_in_samples"]
 
-    block_length_in_samples = save_state["block_length_in_samples"]
+    # # gen_model.eval()
+    # dac_model = dac.DAC.load(dac.utils.download()).to(device)
+    # model_sr = dac_model.sample_rate
 
-    gen_model.eval()
-    dac_model = dac.DAC.load(dac.utils.download()).to(device)
+    gan = DACGAN.load_from_checkpoint(chkpt_path)
+
+    gen_model = gan.generator
+    dac_model = gan.codec
+
+    block_length_in_samples = gan.block_length_in_samples
     model_sr = dac_model.sample_rate
 
     input_waveform = load_mono(input_path, model_sr).to(device)

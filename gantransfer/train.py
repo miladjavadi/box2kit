@@ -152,7 +152,7 @@ def main(args):
         gan = DACGAN.load_from_checkpoint(chkpt_load)
 
     else:
-        gan = DACGAN(gen_model, discr_model, dac_model, device, lambda_embedding=lambda_embedding) # initialize new model
+        gan = DACGAN(gen_model, discr_model, dac_model, device, block_length_in_samples, lambda_embedding=lambda_embedding) # initialize new model
     
     # trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
