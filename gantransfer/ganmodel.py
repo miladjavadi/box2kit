@@ -97,7 +97,13 @@ class DACGAN(pl.LightningModule):
         self.generator = generator
         self.discriminator = discriminator
         self.codec = codec
-        self.device = device
+        self.tensor_device = device
+
+        real_label = 1
+        fake_label = 0
+
+        self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
+        self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
 
     def forward(self, input):
         return self.generator(input)
@@ -131,12 +137,9 @@ class DACGAN(pl.LightningModule):
         
         d_real = self.discriminator(Z_query, target)
         d_fake = self.discriminator(Z_query, transformed_decoded)
-
-        real_labels = torch.full(d_real.shape, real_label, device=self.device, dtype=torch.float32)
-        real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
-
-        fake_labels = torch.full(d_fake.shape, fake_label, device=self.device, dtype=torch.float32)
-        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+        
+        real_adversarial_loss = adversarial_loss_fn(d_real, self.real_labels)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, self.fake_labels)
 
         discr_loss = real_adversarial_loss + fake_adversarial_loss
         self.log("discr_loss", discr_loss, prog_bar=True)
