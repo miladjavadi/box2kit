@@ -124,9 +124,6 @@ class DACGAN(pl.LightningModule):
         adversarial_loss_fn = nn.BCELoss()
         lambda_embedding = 100
 
-        real_label = 1
-        fake_label = 0
-
         with torch.no_grad():
             Z_query = self.codec.encode(query)[0]
             Z_target = self.codec.encode(target)[0]
@@ -143,9 +140,12 @@ class DACGAN(pl.LightningModule):
         
         d_real = self.discriminator(Z_query, target)
         d_fake = self.discriminator(Z_query, transformed_decoded)
+
+        real_labels = torch.Tensor([self.real_label], device=d_real.device, dtype=torch.float32)
+        fake_labels = torch.Tensor([self.fake_label], device=d_fake.device, dtype=torch.float32)
         
-        real_adversarial_loss = adversarial_loss_fn(d_real, self.real_label)
-        fake_adversarial_loss = adversarial_loss_fn(d_fake, self.fake_label)
+        real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
         discr_loss = real_adversarial_loss + fake_adversarial_loss
         self.log("discr_loss", discr_loss, prog_bar=True)
@@ -161,7 +161,7 @@ class DACGAN(pl.LightningModule):
         embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
 
         d_fake = self.discriminator(Z_query, transformed_decoded)
-        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_label)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
         gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
         self.log("gen_loss", gen_loss, prog_bar=True)
