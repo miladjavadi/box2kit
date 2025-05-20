@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import datetime
+import yaml
 
 import dac
 import torchaudio
@@ -18,6 +19,10 @@ def main(args):
     chkpt_path = args.chkpt
     output_file_name = args.out
     requantize = args.requantize
+    hparams_file = args.hparams
+
+    with open(hparams_file) as f:
+        hparams = yaml.safe_load(f)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -31,7 +36,7 @@ def main(args):
     # dac_model = dac.DAC.load(dac.utils.download()).to(device)
     # model_sr = dac_model.sample_rate
 
-    gan = DACGAN.load_from_checkpoint(chkpt_path, codec=dac.DAC.load(dac.utils.download()).to(device), device=device, block_length_in_samples=1, output_block_length_in_samples=1, block_length_in_frames=1, lambda_embedding=1)
+    gan = DACGAN.load_from_checkpoint(chkpt_path, codec=dac.DAC.load(dac.utils.download()).to(device), device=device, **hparams)
 
     gen_model = gan.generator
     dac_model = gan.codec
@@ -68,6 +73,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
     parser.add_argument("--chkpt", help="Path to model checkpoint.", type=str, metavar="path", required=True)
+    parser.add_argument("--hparams", help="Path to model hyperparameters (DEBUG)", type=str, metavar="path", required=True) # fix this
     parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
     parser.add_argument("--requantize", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
     args=parser.parse_args()
