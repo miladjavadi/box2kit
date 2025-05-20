@@ -113,8 +113,6 @@ class DACGAN(pl.LightningModule):
         self.codec.eval()
         self.codec.requires_grad_(False)
 
-        self._exclude_from_state_dict("codec", recurse=True)
-
         self.save_hyperparameters()
 
     def forward(self, input):
@@ -192,3 +190,9 @@ class DACGAN(pl.LightningModule):
     
     def on_validation_epoch_start(self):
         self.codec.eval()
+    
+    def on_save_checkpoint(self, checkpoint):
+        # Remove the evaluator's weights from the checkpoint's state_dict
+        keys_to_remove = [k for k in checkpoint['state_dict'] if k.startswith('codec.')]
+        for k in keys_to_remove:
+            del checkpoint['state_dict'][k]
