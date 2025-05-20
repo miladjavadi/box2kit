@@ -105,6 +105,8 @@ class DACGAN(pl.LightningModule):
         # self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
 
+        self.automatic_optimization = False
+
     def forward(self, input):
         return self.generator(input)
     
