@@ -113,6 +113,8 @@ class DACGAN(pl.LightningModule):
         self.codec.eval()
         self.codec.requires_grad_(False)
 
+        self._exclude_from_state_dict("codec", recurse=True)
+
         self.save_hyperparameters()
 
     def forward(self, input):
