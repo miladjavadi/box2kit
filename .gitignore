@@ -3,3 +3,4 @@ training_data/
 *.wav
 Dockerfile
 .dockerignore
+lightning_logs/

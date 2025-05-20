@@ -153,7 +153,8 @@ def main(args):
     else:
         gan = DACGAN(gen_model, discr_model, dac_model, device) # initialize new model
     
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
+    # trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
 
     trainer.fit(gan, train_dataloaders=dataloader)
 
@@ -171,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
     parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
-    parser.add_argument("--chkptdir", help="Location of save checkpoints.", type=str, metavar="path", default="models")
+    # parser.add_argument("--chkptdir", help="Training logs root dir.", type=str, metavar="path", default=None)
     parser.add_argument("--loadchkpt", help="Resume training from checkpoint in checkpoint directory", type=str, metavar="checkpoint_path", default=None)
     args=parser.parse_args()
     main(args)
