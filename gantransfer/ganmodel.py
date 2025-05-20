@@ -113,7 +113,7 @@ class DACGAN(pl.LightningModule):
         self.codec.eval()
         self.codec.requires_grad_(False)
 
-        self.save_hyperparameters()
+        self.save_hyperparameters("block_length_in_samples", "lambda_embedding")
 
     def forward(self, input):
         return self.generator(input)
