@@ -31,7 +31,7 @@ def main(args):
     # dac_model = dac.DAC.load(dac.utils.download()).to(device)
     # model_sr = dac_model.sample_rate
 
-    gan = DACGAN.load_from_checkpoint(chkpt_path, generator=Generator().to(device), discriminator=1, codec=dac.DAC.load(dac.utils.download()).to(device), device=device, block_length_in_samples=1)
+    gan = DACGAN.load_from_checkpoint(chkpt_path, codec=dac.DAC.load(dac.utils.download()).to(device), device=device, block_length_in_samples=1, output_block_length_in_samples=1, block_length_in_frames=1, lambda_embedding=1)
 
     gen_model = gan.generator
     dac_model = gan.codec
