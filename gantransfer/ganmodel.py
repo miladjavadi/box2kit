@@ -94,9 +94,6 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
 class DACGAN(pl.LightningModule):
     def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1):
         super().__init__()
-        self.generator, self.discriminator = self.initialize_models()
-        self.codec = codec
-
         self.tensor_device = device
 
         self.real_label = 1
@@ -105,11 +102,13 @@ class DACGAN(pl.LightningModule):
         self.lambda_embedding = lambda_embedding
 
         self.block_length_in_samples = block_length_in_samples # needed for inference
-
+        
         # needed to re-initialize discriminator
         self.output_block_length_in_samples = output_block_length_in_samples
         self.block_length_in_frames = block_length_in_frames
 
+        self.generator, self.discriminator = self.initialize_models()
+        self.codec = codec
         # self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
 
