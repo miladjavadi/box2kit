@@ -7,7 +7,7 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import datetime
-import lightning as pl
+import pytorch_lightning as pl
 
 import dac
 import torchaudio
@@ -55,7 +55,7 @@ def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples:
 
     return dataloader
 
-# deprecated
+# deprecated in favor of lightning-embedded training
 def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, device):
     embedding_loss_fn = nn.MSELoss()
     adversarial_loss_fn = nn.BCELoss()
@@ -151,7 +151,7 @@ def main(args):
         gan = DACGAN.load_from_checkpoint(chkpt_load)
 
     else:
-        gan = DACGAN(gen_model, discr_model, dac_model, device)
+        gan = DACGAN(gen_model, discr_model, dac_model, device) # initialize new model
     
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
     parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
     parser.add_argument("--chkptdir", help="Location of save checkpoints.", type=str, metavar="path", default="models")
-    parser.add_argument("--loadchkpt", help="Resume training from checkpoint in checkpoint_path", type=str, metavar="checkpoint_path", default=None)
+    parser.add_argument("--loadchkpt", help="Resume training from checkpoint in checkpoint directory", type=str, metavar="checkpoint_path", default=None)
     args=parser.parse_args()
     main(args)
 
