@@ -121,7 +121,7 @@ class DACGAN(pl.LightningModule):
 
         embedding_loss_fn = nn.MSELoss()
         adversarial_loss_fn = nn.BCELoss()
-        lambda_embedding = 1000
+        lambda_embedding = 0.5
 
         with torch.no_grad():
             Z_query = self.codec.encode(query)[0]
