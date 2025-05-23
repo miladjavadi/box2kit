@@ -6,37 +6,24 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
-import datetime
 import yaml
 
 import dac
 import torchaudio
 from ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
-from train import load_mono
+from train import load_mono, load_checkpoint
 
 def main(args):
     input_path = args.input
-    chkpt_path = args.chkpt
+    ckpt_folder = args.ckpt
     output_file_name = args.out
     requantize = args.requantize
-    hparams_file = args.hparams
-
-    with open(hparams_file) as f:
-        hparams = yaml.safe_load(f)
+    key = args.key
+    descending = not args.asc
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # gen_model = Generator().to(device)
-    # discr_model = Discriminator().to(device)
-    # # gen_model.load_state_dict(save_state["gen_model"])
-
-    # # block_length_in_samples = save_state["block_length_in_samples"]
-
-    # # gen_model.eval()
-    # dac_model = dac.DAC.load(dac.utils.download()).to(device)
-    # model_sr = dac_model.sample_rate
-
-    gan = DACGAN.load_from_checkpoint(chkpt_path, codec=dac.DAC.load(dac.utils.download()).to(device), device=device, **hparams)
+    gan = load_checkpoint(ckpt_folder, dac.DAC.load(dac.utils.download()).to(device), device, key=key, descending=descending)
 
     gen_model = gan.generator
     dac_model = gan.codec
@@ -67,13 +54,15 @@ def main(args):
     torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.\n")
+    parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.")
+    # parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.\n"
     # "File pairs must have the same names within their respective directories.\n"
     # "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
 
     parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
-    parser.add_argument("--chkpt", help="Path to model checkpoint.", type=str, metavar="path", required=True)
-    parser.add_argument("--hparams", help="Path to model hyperparameters (DEBUG)", type=str, metavar="path", required=True) # fix this
+    parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)
+    parser.add_argument("--key", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
+    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
     parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
     parser.add_argument("--requantize", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
     args=parser.parse_args()

@@ -86,7 +86,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.query_data.shape[0]
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         x = self.query_data[idx]
         y = self.target_data[idx]
         return x, y

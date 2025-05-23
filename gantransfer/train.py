@@ -6,8 +6,8 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
-import datetime
 import pytorch_lightning as pl
+import yaml
 
 import dac
 import torchaudio
@@ -40,7 +40,7 @@ def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples:
     dataset = dataset.unsqueeze(1)
     return dataset
 
-def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str):
+def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str) -> torch.utils.data.DataLoader:
     query_files = os.listdir(query_dir)
     target_files = os.listdir(target_dir)
 
@@ -56,7 +56,7 @@ def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples:
     return dataloader
 
 # deprecated in favor of lightning-embedded training
-def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, device):
+def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, device) -> None:
     embedding_loss_fn = nn.MSELoss()
     adversarial_loss_fn = nn.BCELoss()
     lambda_embedding = 100
@@ -70,8 +70,6 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
     for i in range(epochs):
         print(f"Epoch: {i+1}/{epochs}")
         for batch_nr, (query, target) in enumerate(dataloader):
-            # print(f"Epoch: {i+1}/{epochs}, Batch: {batch_nr+1}/{len(dataloader)}")
-
             with torch.no_grad():
                 Z_query = dac_model.encode(query)[0]
                 Z_target = dac_model.encode(target)[0]
@@ -111,7 +109,25 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
             gen_loss.backward()
             gen_optimizer.step()
 
-            # print(f"Discriminator loss: {discr_loss}, Generator loss: {gen_loss}")
+def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step", descending: bool = True):
+    hparams_file = f"{checkpoint_folder}/hparams.yaml"
+
+    with open(hparams_file) as f:
+        hparams = yaml.safe_load(f)
+
+    checkpoint_files = [file for file in os.listdir(f"{checkpoint_folder}/checkpoints") if file[-5:] == ".ckpt"]
+
+    checkpoints = [dict([attribute.split("=") for attribute in name.split("-")].insert(0, ["name", name])) for name in checkpoint_files]
+    
+    try:
+        checkpoint_name = sorted(checkpoints, key = lambda d: d[key], reverse = descending)[0]["name"]
+    
+    except KeyError:
+        raise KeyError(f'Key "{key}" not found in checkpoint file name.')
+
+    checkpoint = DACGAN.load_from_checkpoint(f"{checkpoint_folder}/checkpoints/{checkpoint_name}", codec=codec, device=device, **hparams)
+
+    return checkpoint
 
 def main(args):
     query_dir = args.querydir
@@ -120,11 +136,10 @@ def main(args):
     subdivs = args.subdiv
     batch_size = args.batchsize
     max_epochs = args.maxepochs
-    # chkpt_dir = args.chkptdir
-    chkpt_load = args.loadchkpt
+    ckpt_load = args.loadckpt
     lambda_embedding = args.lemb
-
-    timecode = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    sort_key = args.ckptkey
+    descending = not args.asc
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -142,21 +157,15 @@ def main(args):
         output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
 
     # load from previously saved checkpoint
-    if chkpt_load is not None:
-        # chkpt = torch.load(chkpt_load)
-        # gen_model.load_state_dict(chkpt["gen_model"])
-        # discr_model.load_state_dict(chkpt["discr_model"])
-        gan = DACGAN.load_from_checkpoint(chkpt_load, codec=dac_model, device=device, block_length_in_samples=block_length_in_samples, output_block_length_in_samples=output_block_length_in_samples, block_length_in_frames=block_length_in_frames, lambda_embedding=lambda_embedding)
+    if ckpt_load is not None:
+        gan = load_checkpoint(ckpt_load, codec=dac_model, device=device, key=sort_key, descending=descending)
 
     else:
         gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     
-    # trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, default_root_dir=chkpt_dir, logger=True)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
 
     trainer.fit(gan, train_dataloaders=dataloader)
-
-    # torch.save({"gen_model": gen_model.state_dict(), "discr_model": discr_model.state_dict(), "block_length_in_samples": block_length_in_samples, "output_block_length_in_samples": output_block_length_in_samples, "block_length_in_frames": block_length_in_frames}, f"{chkpt_dir}/model_{timecode}.pth")
 
 
 if __name__ == "__main__":
@@ -170,9 +179,10 @@ if __name__ == "__main__":
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
     parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
-    # parser.add_argument("--chkptdir", help="Training logs root dir.", type=str, metavar="path", default=None)
-    parser.add_argument("--loadchkpt", help="Resume training from checkpoint in path", type=str, metavar="checkpoint_path", default=None)
-    parser.add_argument("--lemb", help="Set importance of embedding loss in discriminator cost function", type=float, metavar="lambda", default=1)
+    parser.add_argument("--loadckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
+    parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
+    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
+    parser.add_argument("--lemb", help="Set importance of embedding loss in generator cost function.", type=float, metavar="lambda", default=1)
     args=parser.parse_args()
     main(args)
 
