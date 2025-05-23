@@ -167,9 +167,9 @@ def main(args):
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
 
     # load from previously saved checkpoint, if provided
-    ckpt = load_checkpoint()
+    ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
 
-    trainer.fit(gan, train_dataloaders=dataloader)
+    trainer.fit(gan, train_dataloaders=dataloader, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
