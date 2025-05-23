@@ -117,7 +117,7 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 
     checkpoint_files = [file for file in os.listdir(f"{checkpoint_folder}/checkpoints") if file[-5:] == ".ckpt"]
 
-    checkpoints = [dict([attribute.split("=") for attribute in name.split("-")].insert(0, ["name", name])) for name in checkpoint_files]
+    checkpoints = [dict([["name", name]] + [attribute.split("=") for attribute in name.split("-")]) for name in checkpoint_files]
     
     try:
         checkpoint_name = sorted(checkpoints, key = lambda d: d[key], reverse = descending)[0]["name"]
