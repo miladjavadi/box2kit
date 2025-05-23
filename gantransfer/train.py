@@ -109,12 +109,7 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
             gen_loss.backward()
             gen_optimizer.step()
 
-def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step", descending: bool = True):
-    hparams_file = f"{checkpoint_folder}/hparams.yaml"
-
-    with open(hparams_file) as f:
-        hparams = yaml.safe_load(f)
-
+def get_checkpoint_path(checkpoint_folder: str, key: str = "step", descending: bool = True) -> str:
     checkpoint_files = [file for file in os.listdir(f"{checkpoint_folder}/checkpoints") if file[-5:] == ".ckpt"]
 
     checkpoints = [dict([["name", name]] + [attribute.split("=") for attribute in name.split("-")]) for name in checkpoint_files]
@@ -124,8 +119,19 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
     
     except KeyError:
         raise KeyError(f'Key "{key}" not found in checkpoint file name.')
+    
+    checkpoint_path = f"{checkpoint_folder}/checkpoints/{checkpoint_name}"
+    return checkpoint_path
 
-    checkpoint = DACGAN.load_from_checkpoint(f"{checkpoint_folder}/checkpoints/{checkpoint_name}", codec=codec, device=device, **hparams)
+def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step", descending: bool = True):
+    hparams_file = f"{checkpoint_folder}/hparams.yaml"
+
+    with open(hparams_file) as f:
+        hparams = yaml.safe_load(f)
+
+    checkpoint_path = get_checkpoint_path(checkpoint_folder, key, descending=descending)
+
+    checkpoint = DACGAN.load_from_checkpoint(checkpoint_path, codec=codec, device=device, **hparams)
 
     return checkpoint
 
@@ -156,14 +162,12 @@ def main(args):
         block_length_in_frames = dummy_frame.shape[2]
         output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
 
-    # load from previously saved checkpoint
-    if ckpt_load is not None:
-        gan = load_checkpoint(ckpt_load, codec=dac_model, device=device, key=sort_key, descending=descending)
-
-    else:
-        gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
+    gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
+
+    # load from previously saved checkpoint, if provided
+    ckpt = load_checkpoint()
 
     trainer.fit(gan, train_dataloaders=dataloader)
 
