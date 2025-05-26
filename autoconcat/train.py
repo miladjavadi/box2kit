@@ -18,8 +18,8 @@ def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int
     query_waveforms = [load_mono((f"{query_dir}/{file}"), codec.sample_rate).to(device) for file in query_files if file[-4:] == ".wav"]
     target_waveforms = [load_mono((f"{target_dir}/{file}"), codec.sample_rate).to(device) for file in target_files if file[-4:] == ".wav"]
 
-    query_dataset = np.asarray(reshape_dataset(query_waveforms, block_length_in_samples))
-    target_dataset = np.asarray(reshape_dataset(target_waveforms, block_length_in_samples))
+    query_dataset = np.asarray(reshape_dataset(query_waveforms, block_length_in_samples).cpu())
+    target_dataset = np.asarray(reshape_dataset(target_waveforms, block_length_in_samples).cpu())
 
     return query_dataset, target_dataset
 
