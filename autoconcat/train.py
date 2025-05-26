@@ -50,7 +50,7 @@ def main(args):
     
     out_path = f"{out_dir}/{out_filename}"
 
-    with open(out_path, "w") as file:
+    with open(out_path, "wb") as file:
         pickle.dump(model, file)
 
 if __name__ == "__main__":
