@@ -15,7 +15,7 @@ def main(args):
     # with open(ckpt_path, "rb"):
     #     ckpt = pickle.load(ckpt_path)
 
-    ckpt = torch.load(ckpt_path)
+    ckpt = torch.load(ckpt_path, weights_only=False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
