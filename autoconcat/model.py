@@ -1,38 +1,40 @@
 import numpy as np
+import torch
 
 class PairedCorpus():
-    def __init__(self, query_frames, target_frames):
-        if query_frames.ndim != 3 or target_frames.ndim != 3:
+    def __init__(self, query_blocks, target_blocks, block_length_in_samples):
+        if query_blocks.ndim != 3 or target_blocks.ndim != 3:
             raise ValueError("Dataset arrays must be three-dimensional (N x D x T).")
     
-        self.query_frames = query_frames # N x D x T
-        self.target_frames = target_frames # N x D x T
+        self.query_blocks = query_blocks # N x D x T
+        self.target_blocks = target_blocks # N x D x T
+        self.block_length_in_samples = block_length_in_samples
     
-    def append(self, new_query_frames, new_target_frames) -> None:
-        if new_query_frames.shape != new_target_frames:
-            raise ValueError(f"Paired query frame and target frame dimensions do not match ({new_query_frames.shape} and {new_target_frames.shape}).")
+    def append(self, new_query_blocks, new_target_blocks) -> None:
+        if new_query_blocks.shape != new_target_blocks:
+            raise ValueError(f"Paired query block and target block dimensions do not match ({new_query_blocks.shape} and {new_target_blocks.shape}).")
         
         try:
-            self.query_frames = np.concat((self.query_frames, new_query_frames), axis=0)
+            self.query_blocks = torch.cat((self.query_blocks, new_query_blocks), axis=0)
         except ValueError:
-            raise ValueError(f"New query frames must match dimensionality with existing corpus in all dimension except 0 ({self.query_frames.shape} and {new_query_frames.shape}).")
+            raise ValueError(f"New query blocks must match dimensionality with existing corpus in all dimension except 0 ({self.query_blocks.shape} and {new_query_blocks.shape}).")
         
         try:
-            self.target_frames = np.concat((self.target_frames, new_target_frames), axis=0)
+            self.target_blocks = torch.cat((self.target_blocks, new_target_blocks), axis=0)
         except ValueError:
-            raise ValueError(f"New target frames must match dimensionality with existing corpus in all dimension except 0 ({self.target_frames.shape} and {new_target_frames.shape}).")
+            raise ValueError(f"New target blocks must match dimensionality with existing corpus in all dimension except 0 ({self.target_blocks.shape} and {new_target_blocks.shape}).")
     
     @property
-    def nframes(self):
-        return self.query_frames.shape[0]
+    def nblocks(self):
+        return self.query_blocks.shape[0]
     
     @property
     def ndims(self):
-        return self.query_frames.shape[1]
+        return self.query_blocks.shape[1]
     
     @property
-    def frame_length(self):
-        return self.query_frames.shape[2]
+    def block_length(self):
+        return self.query_blocks.shape[2]
 
         
 class AutoConcatenator():
@@ -40,10 +42,18 @@ class AutoConcatenator():
         self.corpus = corpus
 
     def quantize_transfer(self, input):
-        differences = self.corpus.query_frames - input
-        distances = np.linalg.norm(differences, axis=(1, 2))
-        min_index = np.argmin(distances)
+        differences = self.corpus.query_blocks - input
+        distances = torch.linalg.norm(differences, axis=(1, 2))
+        min_index = torch.argmin(distances)
 
-        output = self.corpus.target_frames[min_index]
+        output = self.corpus.target_blocks[min_index]
 
         return output
+    
+    @property
+    def ndims(self):
+        return self.corpus.ndims
+    
+    @property
+    def block_length(self):
+        return self.corpus.block_length

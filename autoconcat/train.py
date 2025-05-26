@@ -18,12 +18,12 @@ def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int
     query_waveforms = [load_mono((f"{query_dir}/{file}"), codec.sample_rate).to(device) for file in query_files if file[-4:] == ".wav"]
     target_waveforms = [load_mono((f"{target_dir}/{file}"), codec.sample_rate).to(device) for file in target_files if file[-4:] == ".wav"]
 
-    query_frame_waveforms = reshape_dataset(query_waveforms, block_length_in_samples)
-    target_frame_waveforms = reshape_dataset(target_waveforms, block_length_in_samples)
+    query_block_waveforms = reshape_dataset(query_waveforms, block_length_in_samples)
+    target_block_waveforms = reshape_dataset(target_waveforms, block_length_in_samples)
 
     with torch.inference_mode():
-        query_dataset = codec.encode(query_frame_waveforms)[0]
-        target_dataset = codec.encode(target_frame_waveforms)[0]
+        query_dataset = codec.encode(query_block_waveforms)[0]
+        target_dataset = codec.encode(target_block_waveforms)[0]
 
     query_dataset = np.asarray(query_dataset.cpu())
     target_dataset = np.asarray(target_dataset.cpu())
@@ -45,9 +45,9 @@ def main(args):
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    query_frames, target_frames = prepare_corpus(query_dir, target_dir, block_length_in_samples, dac_model, device)
+    query_blocks, target_blocks = prepare_corpus(query_dir, target_dir, block_length_in_samples, dac_model, device)
 
-    corpus = PairedCorpus(query_frames, target_frames)
+    corpus = PairedCorpus(query_blocks, target_blocks, block_length_in_samples)
     model = AutoConcatenator(corpus)
 
     try:
@@ -57,8 +57,10 @@ def main(args):
     
     out_path = f"{out_dir}/{out_filename}"
 
-    with open(out_path, "wb") as file:
-        pickle.dump(model, file)
+    # with open(out_path, "wb") as file:
+    #     pickle.dump(model, file)
+
+    torch.save(model, out_path)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train autoconcatenative timbre transfer model using paired query/carget datasets.\n"
