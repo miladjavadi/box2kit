@@ -11,7 +11,7 @@ import yaml
 
 import dac
 import torchaudio
-from ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
+from gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
@@ -41,8 +41,8 @@ def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples:
     return dataset
 
 def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str) -> torch.utils.data.DataLoader:
-    query_files = os.listdir(query_dir)
-    target_files = os.listdir(target_dir)
+    query_files = sorted(os.listdir(query_dir))
+    target_files = sorted(os.listdir(target_dir))
 
     # load in all waveforms
     query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr).to(device) for file in query_files if file[-4:] == ".wav"]
