@@ -68,7 +68,6 @@ def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, de
     fake_label = 0
 
     for i in range(epochs):
-        print(f"Epoch: {i+1}/{epochs}")
         for batch_nr, (query, target) in enumerate(dataloader):
             with torch.no_grad():
                 Z_query = dac_model.encode(query)[0]
