@@ -17,7 +17,7 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt = torch.load(ckpt_path, map_location=device)
+    ckpt = torch.load(ckpt_path, weights_only=False, map_location=device)
 
     print(type(ckpt.corpus.query_blocks))
 
