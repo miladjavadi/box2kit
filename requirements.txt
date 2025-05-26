@@ -1,3 +1,4 @@
 descript_audio_codec
 torchaudio
 lightning
+cvxpy
