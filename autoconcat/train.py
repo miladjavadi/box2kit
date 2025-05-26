@@ -38,7 +38,7 @@ def main(args):
     out_dir = args.outdir
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    out_filename = f"autoconcat_{timestamp}.pkl"
+    out_filename = f"autoconcat_{timestamp}.pt"
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
