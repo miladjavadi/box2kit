@@ -2,6 +2,7 @@ import torch
 import torchaudio
 import dac
 import pickle
+import argparse
 
 from autoconcat.model import AutoConcatenator
 from gantransfer.train import load_mono
@@ -43,3 +44,16 @@ def main(args):
     reconstructed_waveform = reconstruction.flatten()
 
     torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
+    print("hmmm")
+
+if __name__ == "__main__":
+    parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained autoconcatonator model.")
+    # parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.\n"
+    # "File pairs must have the same names within their respective directories.\n"
+    # "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
+
+    parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
+    parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)
+    parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
+    args=parser.parse_args()
+    main(args)
