@@ -17,7 +17,7 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt = torch.load(ckpt_path, weights_only=False, map_location=device)
+    ckpt = torch.load(ckpt_path, map_location=device)
 
     print(type(ckpt.corpus.query_blocks))
 
@@ -46,7 +46,6 @@ def main(args):
     reconstructed_waveform = reconstruction.flatten()
 
     torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
-    print("hmmm")
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained autoconcatonator model.")

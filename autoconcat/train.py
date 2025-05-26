@@ -25,8 +25,8 @@ def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int
         query_dataset = codec.encode(query_block_waveforms)[0]
         target_dataset = codec.encode(target_block_waveforms)[0]
 
-    query_dataset = np.asarray(query_dataset.cpu())
-    target_dataset = np.asarray(target_dataset.cpu())
+    query_dataset = query_dataset.cpu()
+    target_dataset = target_dataset.cpu()
 
     return query_dataset, target_dataset
 
