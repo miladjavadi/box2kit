@@ -39,7 +39,7 @@ def main(args):
 
         transformed_embeddings = torch.empty((0, ckpt.ndims, ckpt.block_length), device=device)
         for block in input_embeddings:
-            transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block)), dim=0)
+            transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block).unsqueeze(0)), dim=0)
 
         reconstruction = dac_model.decode(transformed_embeddings)
 
