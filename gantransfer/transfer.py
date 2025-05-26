@@ -10,8 +10,8 @@ import yaml
 
 import dac
 import torchaudio
-from ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
-from train import load_mono, load_checkpoint
+from gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
+from gantransfer.train import load_mono, load_checkpoint
 
 def main(args):
     input_path = args.input
