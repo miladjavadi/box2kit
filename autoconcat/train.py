@@ -8,7 +8,7 @@ import pickle
 import datetime
 
 from gantransfer.train import load_mono, reshape_dataset
-from model import PairedCorpus, AutoConcatenator
+from autoconcat.model import PairedCorpus, AutoConcatenator
 
 def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int, codec: dac.DAC, device: str):
     query_files = sorted(os.listdir(query_dir))
