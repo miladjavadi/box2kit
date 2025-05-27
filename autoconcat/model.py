@@ -62,7 +62,7 @@ class AutoConcatenator():
             if torch.linalg.norm(residual) < tolerance:
                 break
 
-            differences = self.corpus.query_blocks - residual
+            differences = scaled_query_corpus - residual
             distances = torch.linalg.norm(differences, axis=(1, 2))
             min_index = torch.argmin(distances)
 
