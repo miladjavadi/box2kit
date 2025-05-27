@@ -51,31 +51,23 @@ class AutoConcatenator():
 
         return output
     
-    def salt(self, input):
-        device = input.device
+    def salt(self, input, max_steps=8, tolerance=1e-3):
+        residual = input
+        transformed_block = torch.zeros(input.shape, device=input.device)
 
-        query_blocks = np.asarray(self.corpus.query_blocks.cpu())
-        target_blocks = np.asarray(self.corpus.target_blocks.cpu())
-        input = np.asarray(input.cpu())
+        for i in range(max_steps):
+            if torch.linalg.norm(residual) < tolerance:
+                break
 
-        alpha = cp.Variable(self.nblocks)
+            differences = self.corpus.query_blocks - residual
+            distances = torch.linalg.norm(differences, axis=(1, 2))
+            min_index = torch.argmin(distances)
 
-        decomposition = cp.sum([alpha[i] * query_blocks[i] for i in range(self.nblocks)])
+            best_fit_query = self.corpus.query_blocks[min_index]
+            best_fit_target = self.corpus.target_blocks[min_index]
 
-        objective = cp.Minimize(cp.norm1(alpha))
-
-        constraints = [cp.norm(decomposition - input, 'fro') <= 1e-5]
-
-        prob = cp.Problem(objective, constraints)
-        prob.solve()
-
-        if prob.status not in ["optimal", "optimal_inaccurate"]:
-            raise ValueError(f"Optimization failed: {prob.status}")
-
-        coeffs = alpha.value
-        transformed_block = sum(coeffs[i] * target_blocks[i] for i in range(self.nblocks))
-
-        transformed_block = torch.from_numpy(transformed_block).to(device)
+            transformed_block = transformed_block + best_fit_target
+            residual = residual - best_fit_query
 
         return transformed_block
     
