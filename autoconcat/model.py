@@ -51,7 +51,7 @@ class AutoConcatenator():
 
         return output
     
-    def salt(self, input, max_steps=8, tolerance=1e-3):
+    def salt(self, input, max_steps=4, tolerance=1e-3):
         residual = input
         transformed_block = torch.zeros(input.shape, device=input.device)
 
