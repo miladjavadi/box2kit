@@ -12,6 +12,8 @@ def main(args):
     output_file_name = args.out
     ckpt_path = args.ckpt
     use_salt = args.salt
+    salt_max_steps = args.steps
+    salt_tolerance = 10**(-args.tolerance)
     
     # with open(ckpt_path, "rb"):
     #     ckpt = pickle.load(ckpt_path)
@@ -42,7 +44,7 @@ def main(args):
 
         if use_salt:
             for block in input_embeddings:
-                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.salt(block).unsqueeze(0)), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.salt(block, salt_max_steps, salt_tolerance).unsqueeze(0)), dim=0)
         else:
             for block in input_embeddings:
                 transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block).unsqueeze(0)), dim=0)
@@ -63,5 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)
     parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
     parser.add_argument("--salt", help="Use SpArse Linear Transformation (SALT) instead of corpus quantization.", action="store_true")
+    parser.add_argument("--tolerance", help="SALT greedy search early-stopping tolerance (in negative powers of 10).", type=float, metavar="pow")
+    parser.add_argument("--steps", help="Max steps for SALT greedy search.", type=int, metavar="steps")
     args=parser.parse_args()
     main(args)
