@@ -52,6 +52,9 @@ class AutoConcatenator():
         return output
     
     def salt(self, input, max_steps=4, tolerance=1e-3):
+        scaled_query_corpus = 1/max_steps * self.corpus.query_blocks
+        scaled_target_corpus = 1/max_steps * self.corpus.target_blocks
+
         residual = input
         transformed_block = torch.zeros(input.shape, device=input.device)
 
@@ -63,8 +66,8 @@ class AutoConcatenator():
             distances = torch.linalg.norm(differences, axis=(1, 2))
             min_index = torch.argmin(distances)
 
-            best_fit_query = self.corpus.query_blocks[min_index]
-            best_fit_target = self.corpus.target_blocks[min_index]
+            best_fit_query = scaled_query_corpus[min_index]
+            best_fit_target = scaled_target_corpus[min_index]
 
             transformed_block = transformed_block + best_fit_target
             residual = residual - best_fit_query
