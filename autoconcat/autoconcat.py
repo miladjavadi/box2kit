@@ -11,6 +11,7 @@ def main(args):
     input_path = args.input
     output_file_name = args.out
     ckpt_path = args.ckpt
+    use_salt = args.salt
     
     # with open(ckpt_path, "rb"):
     #     ckpt = pickle.load(ckpt_path)
@@ -38,8 +39,13 @@ def main(args):
         input_embeddings = dac_model.encode(input_blocks)[0]
 
         transformed_embeddings = torch.empty((0, ckpt.ndims, ckpt.block_length), device=device)
-        for block in input_embeddings:
-            transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block).unsqueeze(0)), dim=0)
+
+        if use_salt:
+            for block in input_embeddings:
+                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.salt(block).unsqueeze(0)), dim=0)
+        else:
+            for block in input_embeddings:
+                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block).unsqueeze(0)), dim=0)
 
         reconstruction = dac_model.decode(transformed_embeddings)
 
@@ -56,5 +62,6 @@ if __name__ == "__main__":
     parser.add_argument("--input", help="Path to input audio file.", type=str, metavar="path", required=True)
     parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)
     parser.add_argument("--out", help="Name of output file.", type=str, metavar="name", required=True)
+    parser.add_argument("--salt", help="Use SpArse Linear Transformation (SALT) instead of corpus quantization.", action="store_true")
     args=parser.parse_args()
     main(args)
