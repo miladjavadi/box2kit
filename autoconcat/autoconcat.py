@@ -22,8 +22,6 @@ def main(args):
 
     ckpt = torch.load(ckpt_path, weights_only=False, map_location=device)
 
-    print(type(ckpt.corpus.query_blocks))
-
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
     model_sr = dac_model.sample_rate
 
