@@ -54,9 +54,9 @@ class AutoConcatenator():
     def salt(self, input):
         device = input.device
 
-        query_blocks = np.asarray(self.corpus.query_blocks)
-        target_blocks = np.asarray(self.corpus.target_blocks)
-        input = np.asarray(input)
+        query_blocks = np.asarray(self.corpus.query_blocks.cpu())
+        target_blocks = np.asarray(self.corpus.target_blocks.cpu())
+        input = np.asarray(input.cpu())
 
         alpha = cp.Variable(self.nblocks)
 
