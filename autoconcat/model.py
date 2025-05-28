@@ -82,9 +82,9 @@ class AutoConcatenator():
 
         return transformed_block
     
-    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3):
+    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0):
         # input query waveform -> reconstructed target waveform
-        query_latents = self.query_latents(codec)
+        query_latents = self.query_latents(codec, noise)
         target_latents = self.target_latents(codec)
 
         # trim waveform to whole number of block lengths
@@ -113,9 +113,9 @@ class AutoConcatenator():
 
         return reconstructed_waveform
     
-    def query_latents(self, codec):
+    def query_latents(self, codec, noise = 0):
         latents = self.code_to_latents(self.corpus.query_blocks, codec)
-        latents = latents + 0.1*torch.randn_like(latents)
+        latents = latents + noise*torch.randn_like(latents)
         return latents
     
     def target_latents(self, codec):

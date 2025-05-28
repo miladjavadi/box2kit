@@ -15,6 +15,7 @@ def main(args):
     salt_max_steps = args.steps
     salt_tolerance = 10**(-args.tolerance)
     batch_size = args.batchsize
+    noise = args.noise # DEBUG
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -25,7 +26,7 @@ def main(args):
 
     input_waveform = load_mono(input_path, model_sr).to(device)
 
-    transfer_output = ckpt.autoconcat(input_waveform, dac_model, batch_size, salt_max_steps, salt_tolerance)
+    transfer_output = ckpt.autoconcat(input_waveform, dac_model, batch_size, salt_max_steps, salt_tolerance, noise)
 
     torchaudio.save(output_file_name, transfer_output.unsqueeze(0).detach().cpu(), model_sr)
 
@@ -42,5 +43,6 @@ if __name__ == "__main__":
     parser.add_argument("--salt", help="Use SpArse Linear Transformation (SALT) instead of corpus quantization.", action="store_true")
     parser.add_argument("--tolerance", help="SALT greedy search early-stopping tolerance (in negative powers of 10).", type=float, metavar="pow", default=3)
     parser.add_argument("--steps", help="Max steps for SALT greedy search.", type=int, metavar="steps", default=4)
+    parser.add_argument("--noise", help="(DEBUG) How much noise to add to the corpus query blocks", type=float, metavar="pow", default=0)
     args=parser.parse_args()
     main(args)
