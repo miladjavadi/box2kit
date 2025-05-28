@@ -114,10 +114,13 @@ class AutoConcatenator():
         return reconstructed_waveform
     
     def query_latents(self, codec):
-        return self.code_to_latents(self.corpus.query_blocks, codec)
+        latents = self.code_to_latents(self.corpus.query_blocks, codec)
+        latents = latents + 0.1*torch.randn_like(latents)
+        return latents
     
     def target_latents(self, codec):
-        return self.code_to_latents(self.corpus.target_blocks, codec)
+        latents = self.code_to_latents(self.corpus.target_blocks, codec)
+        return latents
     
     def code_to_latents(self, codes, codec, batch_size: int = 64):
         code_batches = batch_partition(codes, batch_size)

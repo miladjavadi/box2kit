@@ -23,7 +23,7 @@ files = sorted(os.listdir("training_data/beatbox"))
 super_vector = torch.zeros((1,0), device="cpu")
 for file in files:
     if file[-4:] == ".wav":
-        audio = load_mono(file, 48000).to("cpu")
+        audio = load_mono(f"training_data/beatbox/{file}", 48000).to("cpu")
         super_vector = torch.cat((super_vector, audio), dim=1)
 
 print(super_vector.shape[1]/48000)
