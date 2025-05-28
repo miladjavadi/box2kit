@@ -58,6 +58,8 @@ class AutoConcatenator():
 
         opt_index = torch.argmax(xcorr_sims)
 
+        print(opt_index)
+
         output = target_latents[opt_index]
 
         return output
