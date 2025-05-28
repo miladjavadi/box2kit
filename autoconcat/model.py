@@ -45,11 +45,15 @@ class AutoConcatenator():
 
     def quantize_transfer(self, input, query_latents, target_latents):
 
-        differences = query_latents - input
-        distances = torch.linalg.norm(differences, axis=(1, 2))
-        min_index = torch.argmin(distances)
+        # differences = query_latents - input
+        # distances = torch.linalg.norm(differences, axis=(1, 2))
+        # opt_index = torch.argmin(distances)
 
-        output = target_latents[min_index]
+        cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        cosine_norms = torch.linalg.norm(cosine_sims, axis=1)
+        opt_index = torch.argmax(cosine_norms)
+
+        output = target_latents[opt_index]
 
         return output
     
@@ -79,10 +83,8 @@ class AutoConcatenator():
     
     def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3):
         # input query waveform -> reconstructed target waveform
-        # query_latents = self.query_latents(codec)
-        # target_latents = self.target_latents(codec)
-        query_latents = self.corpus.query_blocks
-        target_latents = self.corpus.target_blocks
+        query_latents = self.query_latents(codec)
+        target_latents = self.target_latents(codec)
 
         # trim waveform to whole number of block lengths
         input_waveform = input_waveform[:,:((input_waveform.shape[1]//self.corpus.block_length_in_samples)*self.corpus.block_length_in_samples)]
