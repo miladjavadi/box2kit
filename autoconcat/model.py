@@ -43,9 +43,7 @@ class AutoConcatenator():
     def __init__(self, corpus: PairedCorpus):
         self.corpus = corpus
 
-    def quantize_transfer(self, input, codec):
-        query_latents = self.query_latents(codec)
-        target_latents = self.target_latents(codec)
+    def quantize_transfer(self, input, query_latents, target_latents):
 
         differences = query_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
@@ -55,7 +53,7 @@ class AutoConcatenator():
 
         return output
     
-    def salt(self, input, query_latents, target_latents, codec, max_steps=1, tolerance=1e-3):
+    def salt(self, input, query_latents, target_latents, max_steps=1, tolerance=1e-3):
 
         scaled_query_corpus = 1/max_steps * query_latents
         scaled_target_corpus = 1/max_steps * target_latents
@@ -99,7 +97,8 @@ class AutoConcatenator():
             transformed_embeddings = torch.empty((0, input_embeddings.shape[1], self.block_length), device=input_waveform.device)
 
             for block in input_embeddings:
-                transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
+                # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
