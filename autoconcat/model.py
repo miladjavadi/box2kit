@@ -116,7 +116,7 @@ class AutoConcatenator():
         return self.code_to_latents(self.corpus.target_blocks, codec)
     
     def code_to_latents(self, codes, codec, batch_size: int = 64):
-        code_batches = batch_partition(self.corpus.codes, batch_size)
+        code_batches = batch_partition(codes, batch_size)
         with torch.inference_mode():
             batched_latents = [codec.quantizer.from_codes(code_batch)[0] for code_batch in code_batches]
         latents = torch.cat(batched_latents, dim=0)
