@@ -14,9 +14,6 @@ def main(args):
     use_salt = args.salt
     salt_max_steps = args.steps
     salt_tolerance = 10**(-args.tolerance)
-    
-    # with open(ckpt_path, "rb"):
-    #     ckpt = pickle.load(ckpt_path)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -28,30 +25,10 @@ def main(args):
     block_length_in_samples = ckpt.corpus.block_length_in_samples
 
     input_waveform = load_mono(input_path, model_sr).to(device)
-    # trim waveform to whole number of block lengths
-    input_waveform = input_waveform[:,:((input_waveform.shape[1]//block_length_in_samples)*block_length_in_samples)]
 
-    # reshape waveform into blocks
-    input_blocks = torch.reshape(input_waveform, (-1, block_length_in_samples))
-    input_blocks = input_blocks.unsqueeze(1)
+    transfer_output = ckpt.autoconcat(input_waveform, dac_model, salt_max_steps, salt_tolerance)
 
-    with torch.inference_mode():
-        input_embeddings = dac_model.encode(input_blocks)[0]
-
-        transformed_embeddings = torch.empty((0, ckpt.ndims, ckpt.block_length), device=device)
-
-        if use_salt:
-            for block in input_embeddings:
-                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.salt(block, salt_max_steps, salt_tolerance).unsqueeze(0)), dim=0)
-        else:
-            for block in input_embeddings:
-                transformed_embeddings = torch.cat((transformed_embeddings, ckpt.quantize_transfer(block).unsqueeze(0)), dim=0)
-
-        reconstruction = dac_model.decode(transformed_embeddings)
-
-    reconstructed_waveform = reconstruction.flatten()
-
-    torchaudio.save(output_file_name, reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
+    torchaudio.save(output_file_name, transfer_output.unsqueeze(0).detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained autoconcatonator model.")

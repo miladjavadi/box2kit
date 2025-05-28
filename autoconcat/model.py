@@ -5,10 +5,10 @@ import cvxpy as cp
 class PairedCorpus():
     def __init__(self, query_blocks, target_blocks, block_length_in_samples):
         if query_blocks.ndim != 3 or target_blocks.ndim != 3:
-            raise ValueError("Dataset arrays must be three-dimensional (N x D x T).")
+            raise ValueError("Dataset arrays must be three-dimensional (B x Nq x T).")
     
-        self.query_blocks = query_blocks # N x D x T
-        self.target_blocks = target_blocks # N x D x T
+        self.query_blocks = query_blocks # B x Nq x T
+        self.target_blocks = target_blocks # B x Nq x T
         self.block_length_in_samples = block_length_in_samples
     
     def append(self, new_query_blocks, new_target_blocks) -> None:
@@ -30,7 +30,7 @@ class PairedCorpus():
         return self.query_blocks.shape[0]
     
     @property
-    def ndims(self):
+    def nbooks(self):
         return self.query_blocks.shape[1]
     
     @property
@@ -42,18 +42,22 @@ class AutoConcatenator():
     def __init__(self, corpus: PairedCorpus):
         self.corpus = corpus
 
-    def quantize_transfer(self, input):
-        differences = self.corpus.query_blocks - input
+    def quantize_transfer(self, input, codec):
+        query_latents = self.query_latents(codec)
+        target_latents = self.target_latents(codec)
+
+        differences = query_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
         min_index = torch.argmin(distances)
 
-        output = self.corpus.target_blocks[min_index]
+        output = target_latents[min_index]
 
         return output
     
-    def salt(self, input, max_steps=4, tolerance=1e-3):
-        scaled_query_corpus = 1/max_steps * self.corpus.query_blocks
-        scaled_target_corpus = 1/max_steps * self.corpus.target_blocks
+    def salt(self, input, query_latents, target_latents, codec, max_steps=1, tolerance=1e-3):
+
+        scaled_query_corpus = 1/max_steps * query_latents
+        scaled_target_corpus = 1/max_steps * target_latents
 
         residual = input
         transformed_block = torch.zeros(input.shape, device=input.device)
@@ -74,13 +78,45 @@ class AutoConcatenator():
 
         return transformed_block
     
+    def autoconcat(self, input_waveform, codec, max_steps=1, tolerance=1e-3):
+        # input query waveform -> reconstructed target waveform
+        query_latents = self.query_latents(codec)
+        target_latents = self.target_latents(codec)
+
+        # trim waveform to whole number of block lengths
+        input_waveform = input_waveform[:,:((input_waveform.shape[1]//self.corpus.block_length_in_samples)*self.corpus.block_length_in_samples)]
+
+        # reshape waveform into blocks
+        input_blocks = torch.reshape(input_waveform, (-1, self.corpus.block_length_in_samples))
+        input_blocks = input_blocks.unsqueeze(1)
+
+        with torch.inference_mode():
+            input_embeddings = codec.encode(input_blocks)[0]
+
+            transformed_embeddings = torch.empty((0, self.ndims, self.block_length), device=input_waveform.device)
+
+            for block in input_embeddings:
+                transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
+
+            reconstruction = codec.decode(transformed_embeddings)
+
+        reconstructed_waveform = reconstruction.flatten()
+
+        return reconstructed_waveform
+    
+    def query_latents(self, codec):
+        return codec.quantizer.from_codes(self.corpus.query_blocks)[0]
+    
+    def target_latents(self, codec):
+        return codec.quantizer.from_codes(self.corpus.target_blocks)[0]
+
     @property
     def nblocks(self):
         return self.corpus.nblocks
 
     @property
-    def ndims(self):
-        return self.corpus.ndims
+    def nbooks(self):
+        return self.corpus.nbooks
     
     @property
     def block_length(self):
