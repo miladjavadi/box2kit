@@ -79,7 +79,7 @@ class AutoConcatenator():
 
         return transformed_block
     
-    def autoconcat(self, input_waveform, codec, max_steps=1, tolerance=1e-3):
+    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3):
         # input query waveform -> reconstructed target waveform
         query_latents = self.query_latents(codec)
         target_latents = self.target_latents(codec)
@@ -92,7 +92,7 @@ class AutoConcatenator():
         input_blocks = input_blocks.unsqueeze(1)
 
         with torch.inference_mode():
-            batched_input_blocks = batch_partition(input_blocks)
+            batched_input_blocks = batch_partition(input_blocks, batch_size)
             batched_input_embeddings = [codec.encode(batch)[0] for batch in batched_input_blocks]
             input_embeddings = torch.cat(batched_input_embeddings, dim=0)
 
@@ -101,7 +101,7 @@ class AutoConcatenator():
             for block in input_embeddings:
                 transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
 
-            batched_transformed_embeddings = batch_partition(batched_transformed_embeddings)
+            batched_transformed_embeddings = batch_partition(batched_transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
 
 
@@ -115,8 +115,8 @@ class AutoConcatenator():
     def target_latents(self, codec):
         return self.code_to_latents(self.corpus.target_blocks, codec)
     
-    def code_to_latents(self, codes, codec):
-        code_batches = batch_partition(self.corpus.codes)
+    def code_to_latents(self, codes, codec, batch_size: int = 64):
+        code_batches = batch_partition(self.corpus.codes, batch_size)
         with torch.inference_mode():
             batched_latents = [codec.quantizer.from_codes(code_batch)[0] for code_batch in code_batches]
         latents = torch.cat(batched_latents, dim=0)
