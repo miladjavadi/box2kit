@@ -45,9 +45,9 @@ class AutoConcatenator():
 
     def quantize_transfer(self, input, query_latents, target_latents):
 
-        differences = query_latents - input
-        distances = torch.linalg.norm(differences, axis=(1, 2))
-        opt_index = torch.argmin(distances)
+        # differences = query_latents - input
+        # distances = torch.linalg.norm(differences, axis=(1, 2))
+        # opt_index = torch.argmin(distances)
 
         # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
         # cosine_norms = torch.linalg.norm(cosine_sims, axis=1)
@@ -55,6 +55,8 @@ class AutoConcatenator():
         # opt_index = torch.argmax(cosine_norms/distances)
 
         xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
+
+        print(xcorr_sims)
 
         opt_index = torch.argmax(xcorr_sims)
 
