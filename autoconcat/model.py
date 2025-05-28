@@ -49,14 +49,14 @@ class AutoConcatenator():
         # distances = torch.linalg.norm(differences, axis=(1, 2))
         # opt_index = torch.argmin(distances)
 
-        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
-        # cosine_norms = torch.linalg.norm(cosine_sims, axis=1)
+        cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        cosine_norms = torch.mean(cosine_sims, axis=1)
 
-        # opt_index = torch.argmax(cosine_norms/distances)
+        opt_index = torch.argmax(cosine_norms)
 
-        xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
+        # xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
 
-        opt_index = torch.argmax(xcorr_sims)
+        # opt_index = torch.argmax(xcorr_sims)
 
         print("xxx")
         print(opt_index)
