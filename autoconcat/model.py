@@ -89,7 +89,6 @@ class AutoConcatenator():
         xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y)
         mean_xcorr = torch.mean(xcorr, dim=2)
         xcorr_sim = torch.linalg.norm(mean_xcorr, dim=1)
-        print(xcorr_sim)
 
         return xcorr_sim
     
@@ -116,6 +115,7 @@ class AutoConcatenator():
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
                 transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
+                print(transformed_embeddings.shape)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
