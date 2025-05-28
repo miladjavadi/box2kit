@@ -47,12 +47,12 @@ class AutoConcatenator():
 
         differences = query_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
-        # opt_index = torch.argmin(distances)
+        opt_index = torch.argmin(distances)
 
-        cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
-        cosine_norms = torch.linalg.norm(cosine_sims, axis=1)
+        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        # cosine_norms = torch.linalg.norm(cosine_sims, axis=1)
 
-        opt_index = torch.argmax(cosine_norms/distances)
+        # opt_index = torch.argmax(cosine_norms/distances)
 
         output = target_latents[opt_index]
 
