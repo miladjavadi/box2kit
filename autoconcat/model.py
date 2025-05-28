@@ -61,7 +61,7 @@ class AutoConcatenator():
         print("xxx")
         print(opt_index)
         print(xcorr_sims[opt_index])
-        print(torch.mean(query_latents[opt_index]))
+        print(torch.var_mean(query_latents[opt_index]))
 
         output = target_latents[opt_index]
 
