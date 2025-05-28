@@ -56,6 +56,7 @@ class AutoConcatenator():
 
         xcorr_sims = self.xcorr_similarity(input, query_latents)
         opt_index = torch.argmax(xcorr_sims)
+        print(opt_index)
 
         output = target_latents[opt_index]
 
@@ -115,7 +116,6 @@ class AutoConcatenator():
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
                 transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
-                print(transformed_embeddings.shape)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
