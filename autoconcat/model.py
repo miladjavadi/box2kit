@@ -79,8 +79,10 @@ class AutoConcatenator():
     
     def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3):
         # input query waveform -> reconstructed target waveform
-        query_latents = self.query_latents(codec)
-        target_latents = self.target_latents(codec)
+        # query_latents = self.query_latents(codec)
+        # target_latents = self.target_latents(codec)
+        query_latents = self.corpus.query_blocks
+        target_latents = self.corpus.target_blocks
 
         # trim waveform to whole number of block lengths
         input_waveform = input_waveform[:,:((input_waveform.shape[1]//self.corpus.block_length_in_samples)*self.corpus.block_length_in_samples)]
