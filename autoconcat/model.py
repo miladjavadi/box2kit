@@ -56,7 +56,7 @@ class AutoConcatenator():
 
         xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
 
-        opt_index = torch.argmax(xcorr_sims)
+        opt_index = torch.argmin(xcorr_sims)
 
         print("xxx")
         print(xcorr_sims[opt_index])
