@@ -91,6 +91,7 @@ class AutoConcatenator():
         return transformed_block
     
     def xcorr_similarity(self, x, y):
+        print(x.shape)
         xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y.flip(-1).unsqueeze(1), groups=x.shape[0])
         print(xcorr.shape)
         mean_xcorr = torch.mean(xcorr, dim=2)
