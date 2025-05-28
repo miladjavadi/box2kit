@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import cvxpy as cp
+from autoconcat.train import batch_partition
 
 class PairedCorpus():
     def __init__(self, query_blocks, target_blocks, block_length_in_samples):
@@ -91,24 +92,35 @@ class AutoConcatenator():
         input_blocks = input_blocks.unsqueeze(1)
 
         with torch.inference_mode():
-            input_embeddings = codec.encode(input_blocks)[0]
+            batched_input_blocks = batch_partition(input_blocks)
+            batched_input_embeddings = [codec.encode(batch)[0] for batch in batched_input_blocks]
+            input_embeddings = torch.cat(batched_input_embeddings, dim=0)
 
             transformed_embeddings = torch.empty((0, self.ndims, self.block_length), device=input_waveform.device)
 
             for block in input_embeddings:
                 transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
 
-            reconstruction = codec.decode(transformed_embeddings)
+            batched_transformed_embeddings = batch_partition(batched_transformed_embeddings)
+            batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
 
-        reconstructed_waveform = reconstruction.flatten()
+
+        reconstructed_waveform = torch.cat(batched_reconstruction, dim=0).flatten()
 
         return reconstructed_waveform
     
     def query_latents(self, codec):
-        return codec.quantizer.from_codes(self.corpus.query_blocks)[0]
+        return self.code_to_latents(self.corpus.query_blocks, codec)
     
     def target_latents(self, codec):
-        return codec.quantizer.from_codes(self.corpus.target_blocks)[0]
+        return self.code_to_latents(self.corpus.target_blocks, codec)
+    
+    def code_to_latents(self, codes, codec):
+        code_batches = batch_partition(self.corpus.codes)
+        with torch.inference_mode():
+            batched_latents = [codec.quantizer.from_codes(code_batch)[0] for code_batch in code_batches]
+        latents = torch.cat(batched_latents, dim=0)
+        return latents
 
     @property
     def nblocks(self):
