@@ -55,7 +55,7 @@ class AutoConcatenator():
         # opt_index = torch.argmax(cosine_norms/distances)
 
         xcorr_sims = self.xcorr_similarity(input, query_latents)
-        opt_index = torch.argmin(xcorr_sims)
+        opt_index = torch.argmax(xcorr_sims)
 
         output = target_latents[opt_index]
 
@@ -86,7 +86,7 @@ class AutoConcatenator():
         return transformed_block
     
     def xcorr_similarity(self, x, y):
-        xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y, padding="same")
+        xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y)
         mean_xcorr = torch.mean(xcorr, dim=2)
         xcorr_sim = torch.linalg.norm(mean_xcorr, dim=1)
 
