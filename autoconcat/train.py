@@ -23,10 +23,10 @@ def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int
     target_block_waveforms = reshape_dataset(target_waveforms, block_length_in_samples)
 
     with torch.inference_mode():
-        query_dataset = [codec.encode(waveform)["codes"] for waveform in batch_partition(query_block_waveforms, batch_size)] # save latent code indices to save space
+        query_dataset = [codec.encode(waveform)[1] for waveform in batch_partition(query_block_waveforms, batch_size)] # save latent code indices to save space
         query_dataset = torch.cat(query_dataset, dim=0)
 
-        target_dataset = [codec.encode(waveform)["codes"] for waveform in batch_partition(target_block_waveforms, batch_size)]
+        target_dataset = [codec.encode(waveform)[1] for waveform in batch_partition(target_block_waveforms, batch_size)]
         target_dataset = torch.cat(target_dataset, dim=0)
 
     query_dataset = query_dataset
