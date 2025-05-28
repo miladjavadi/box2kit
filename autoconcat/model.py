@@ -89,7 +89,7 @@ class AutoConcatenator():
         xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y)
         mean_xcorr = torch.mean(xcorr, dim=2)
         xcorr_sim = torch.linalg.norm(mean_xcorr, dim=1)
-        print(xcorr_sim.shape)
+        print(xcorr_sim)
 
         return xcorr_sim
     
