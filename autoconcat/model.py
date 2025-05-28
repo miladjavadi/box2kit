@@ -96,7 +96,7 @@ class AutoConcatenator():
             batched_input_embeddings = [codec.encode(batch)[0] for batch in batched_input_blocks]
             input_embeddings = torch.cat(batched_input_embeddings, dim=0)
 
-            transformed_embeddings = torch.empty((0, self.ndims, self.block_length), device=input_waveform.device)
+            transformed_embeddings = torch.empty((0, input_embeddings.shape[1], self.block_length), device=input_waveform.device)
 
             for block in input_embeddings:
                 transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
