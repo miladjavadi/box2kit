@@ -101,7 +101,7 @@ class AutoConcatenator():
             for block in input_embeddings:
                 transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, codec, max_steps, tolerance).unsqueeze(0)), dim=0)
 
-            batched_transformed_embeddings = batch_partition(batched_transformed_embeddings, batch_size)
+            batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
 
 
