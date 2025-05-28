@@ -9,9 +9,7 @@ import datetime
 
 from gantransfer.train import load_mono, reshape_dataset
 from autoconcat.model import PairedCorpus, AutoConcatenator
-
-def batch_partition(dataset, batch_size: int = 64):
-    return [dataset[i:i+batch_size] for i in range(0, dataset.shape[0], batch_size)]
+from autoconcat.util import batch_partition
 
 def prepare_corpus(query_dir: str, target_dir: str, block_length_in_samples: int, codec: dac.DAC, device: str, batch_size: int = 64):
     query_files = sorted(os.listdir(query_dir))

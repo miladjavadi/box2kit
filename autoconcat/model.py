@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import cvxpy as cp
-from autoconcat.train import batch_partition
+from autoconcat.util import batch_partition
 
 class PairedCorpus():
     def __init__(self, query_blocks, target_blocks, block_length_in_samples):
