@@ -56,7 +56,7 @@ class AutoConcatenator():
 
         xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
 
-        opt_index = torch.argmin(xcorr_sims)
+        opt_index = torch.argmax(xcorr_sims)
 
         # print("xxx")
         # print(xcorr_sims[opt_index])
@@ -92,7 +92,7 @@ class AutoConcatenator():
     
     def xcorr_similarity(self, x, y):
         print(x.shape)
-        xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y.flip(-1).unsqueeze(1), groups=x.shape[0])
+        xcorr = torch.nn.functional.conv1d(x.unsqueeze(0), y.flip(-1).unsqueeze(1), padding=(x.shape[1]-1, x.shape[1]-1), groups=x.shape[0])
         print(xcorr.shape)
         mean_xcorr = torch.mean(xcorr, dim=2)
         print(mean_xcorr.shape)
