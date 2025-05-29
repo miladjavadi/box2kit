@@ -45,14 +45,13 @@ class AutoConcatenator():
 
     def quantize_transfer(self, input, query_latents, target_latents):
 
-        # differences = query_latents - input
-        # distances = torch.linalg.norm(differences, axis=(1, 2))
-        # opt_index = torch.argmin(distances)
+        differences = query_latents - input
+        distances = torch.linalg.norm(differences, axis=(1, 2))
+        opt_index = torch.argmin(distances)
 
-        cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
-        cosine_norms = torch.mean(cosine_sims, axis=1)
-
-        opt_index = torch.argmax(cosine_norms)
+        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        # cosine_norms = torch.mean(cosine_sims, axis=1)
+        # opt_index = torch.argmax(cosine_norms)
 
         # xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
 
@@ -63,9 +62,14 @@ class AutoConcatenator():
         # print(xcorr_sims[opt_index])
         # print(torch.var_mean(query_latents[opt_index]))
 
+        print(distances[opt_index])
+
         output = target_latents[opt_index]
 
         return output
+    
+    # def knn_transfer(self, input, query_latents, target_latents, k=3):
+
     
     def salt(self, input, query_latents, target_latents, max_steps=1, tolerance=1e-3):
 
