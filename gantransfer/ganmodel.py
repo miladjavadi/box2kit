@@ -38,9 +38,9 @@ class Discriminator(nn.Module):
         self.block_length_in_frames = block_length_in_frames
 
         self.embedding_path = nn.Sequential(
-            nn.Conv1d(1024, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv1d(1024, 16, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 4, kernel_size=4, stride=2, padding=1),
+            nn.Conv1d(16, 4, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm1d(4),
             nn.LeakyReLU(),
         )
@@ -57,9 +57,9 @@ class Discriminator(nn.Module):
         )
 
         self.combined_layer = nn.Sequential(
-            nn.Linear((4*(block_length_in_frames//4) + 4*(block_length_in_samples//8)), 16),
+            nn.Linear((4*(block_length_in_frames//4) + 4*(block_length_in_samples//8)), 8),
             nn.LeakyReLU(),
-            nn.Linear(16, 1),
+            nn.Linear(8, 1),
             nn.Sigmoid()
         )
     
