@@ -68,10 +68,10 @@ class AutoConcatenator():
 
         return output
     
-    def knn_transfer(self, input, query_latents, target_latents, k=3):
+    def knn_transfer(self, input, query_latents, target_latents, k=1):
 
-        input = torch.nn.functional.normalize(input, dim=0)
-        query_latents = torch.nn.functional.normalize(query_latents, dim=1)
+        # input = torch.nn.functional.normalize(input, dim=0)
+        # query_latents = torch.nn.functional.normalize(query_latents, dim=1)
 
         differences = query_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
@@ -134,7 +134,7 @@ class AutoConcatenator():
 
         return xcorr_sim
     
-    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0, k=3):
+    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0, k=1):
         # input query waveform -> reconstructed target waveform
         query_latents = self.query_latents(codec, noise)
         target_latents = self.target_latents(codec)
