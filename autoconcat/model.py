@@ -78,7 +78,8 @@ class AutoConcatenator():
         cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
         cosine_norms = torch.mean(cosine_sims, axis=1)
         k_opt_dist, k_opt_ind = torch.topk(cosine_norms, k)
-        normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
+        # normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
+        normalized_dist_score = torch.ones_like(k_opt_dist)/k
 
         # normalized_dist_score = (1/distances)/torch.sum((1/k_opt_dist))
         # normalized_dist_score = torch.ones_like(distances)/k
