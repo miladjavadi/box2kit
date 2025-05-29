@@ -69,14 +69,19 @@ class AutoConcatenator():
         return output
     
     def knn_transfer(self, input, query_latents, target_latents, k=3):
-        differences = query_latents - input
-        distances = torch.linalg.norm(differences, axis=(1, 2))
 
-        k_opt_dist, k_opt_ind = torch.topk(-distances, k)
+        # differences = query_latents - input
+        # distances = torch.linalg.norm(differences, axis=(1, 2))
+        # k_opt_dist, k_opt_ind = torch.topk(-distances, k)
+        # normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
+
+        cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        cosine_norms = torch.mean(cosine_sims, axis=1)
+        k_opt_dist, k_opt_ind = torch.topk(cosine_norms, k)
+        normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
 
         # normalized_dist_score = (1/distances)/torch.sum((1/k_opt_dist))
         # normalized_dist_score = torch.ones_like(distances)/k
-        normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
 
         transformed_components = [normalized_dist_score[i]*target_latents[j] for i, j in enumerate(k_opt_ind)]
 
