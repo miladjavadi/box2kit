@@ -15,15 +15,15 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv1d(1024, 256, kernel_size=5, padding="same", padding_mode="reflect"),
+            nn.Conv1d(1024, 64, kernel_size=3, padding="same", padding_mode="reflect"),
             nn.LeakyReLU(),
-            nn.Conv1d(256, 64, kernel_size=5, padding="same", padding_mode="reflect"),
+            nn.Conv1d(64, 16, kernel_size=3, padding="same", padding_mode="reflect"),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Conv1d(16, 64, kernel_size=3, padding="same", padding_mode="reflect"),
             nn.BatchNorm1d(64),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 256, kernel_size=5, padding="same", padding_mode="reflect"),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(),
-            nn.Conv1d(256, 1024, kernel_size=5, padding="same", padding_mode="reflect")
+            nn.Conv1d(64, 1024, kernel_size=3, padding="same", padding_mode="reflect")
         )
 
     def forward(self, input):
