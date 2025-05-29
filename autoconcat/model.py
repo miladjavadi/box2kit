@@ -75,7 +75,7 @@ class AutoConcatenator():
         k_opt_dist, k_opt_ind = torch.topk(-distances, k)
 
         # normalized_dist_score = (1/distances)/torch.sum((1/k_opt_dist))
-        normalized_dist_score = 1/k
+        normalized_dist_score = torch.ones_like(distances)/k
 
         transformed_components = [normalized_dist_score[i]*target_latents[i] for i in k_opt_ind]
 
