@@ -40,26 +40,26 @@ class Discriminator(nn.Module):
         self.embedding_path = nn.Sequential(
             nn.Conv1d(1024, 64, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 8, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(8),
+            nn.Conv1d(64, 4, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(4),
             nn.LeakyReLU(),
         )
 
         self.waveform_path = nn.Sequential(
-            nn.Conv1d(1, 8, kernel_size=4, stride=2, padding=1),
+            nn.Conv1d(1, 4, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(),
-            nn.Conv1d(8, 32, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(32),
+            nn.Conv1d(4, 16, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-            nn.Conv1d(32, 8, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(8),
+            nn.Conv1d(16, 4, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(4),
             nn.LeakyReLU()
         )
 
         self.combined_layer = nn.Sequential(
-            nn.Linear((8*(block_length_in_frames//4) + 8*(block_length_in_samples//8)), 128),
+            nn.Linear((4*(block_length_in_frames//4) + 4*(block_length_in_samples//8)), 16),
             nn.LeakyReLU(),
-            nn.Linear(128, 1),
+            nn.Linear(16, 1),
             nn.Sigmoid()
         )
     
