@@ -123,7 +123,7 @@ class AutoConcatenator():
 
         return xcorr_sim
     
-    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0):
+    def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0, k=3):
         # input query waveform -> reconstructed target waveform
         query_latents = self.query_latents(codec, noise)
         target_latents = self.target_latents(codec)
@@ -145,7 +145,7 @@ class AutoConcatenator():
             for block in input_embeddings:
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
-                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, query_latents, target_latents, k).unsqueeze(0)), dim=0)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
