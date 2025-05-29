@@ -81,8 +81,8 @@ class AutoConcatenator():
 
         approximated_transform = torch.sum(torch.stack(transformed_components), dim=0)
 
-        # quantized_transform = self.quantize_transfer(approximated_transform, target_latents, target_latents)
-        quantized_transform = approximated_transform
+        quantized_transform = self.quantize_transfer(approximated_transform, target_latents, target_latents)
+        # quantized_transform = approximated_transform
 
         return quantized_transform
 
@@ -146,7 +146,7 @@ class AutoConcatenator():
             for block in input_embeddings:
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
-                transformed_embeddings = torch.cat((transformed_embeddings, codec.quantizer(self.knn_transfer(block, query_latents, target_latents, k).unsqueeze(0))[0]), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, query_latents, target_latents, k).unsqueeze(0)), dim=0)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
