@@ -71,7 +71,7 @@ class AutoConcatenator():
     def knn_transfer(self, input, query_latents, target_latents, k=3):
 
         input = torch.nn.functional.normalize(input, dim=0)
-        query_latents = torch.nn.functional.normalize(input, dim=1)
+        query_latents = torch.nn.functional.normalize(query_latents, dim=1)
 
         differences = query_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
