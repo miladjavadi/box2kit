@@ -62,13 +62,27 @@ class AutoConcatenator():
         # print(xcorr_sims[opt_index])
         # print(torch.var_mean(query_latents[opt_index]))
 
-        print(distances[opt_index])
+        # print(distances[opt_index])
 
         output = target_latents[opt_index]
 
         return output
     
-    # def knn_transfer(self, input, query_latents, target_latents, k=3):
+    def knn_transfer(self, input, query_latents, target_latents, k=3):
+        differences = query_latents - input
+        distances = torch.linalg.norm(differences, axis=(1, 2))
+
+        k_opt_dist, k_opt_ind = torch.topk(-distances, k)
+
+        normalized_dist_score = (1/distances)/torch.sum((1/k_opt_dist))
+
+        transformed_components = [normalized_dist_score[i]*target_latents[i] for i in k_opt_ind]
+
+        approximated_transform = torch.sum(torch.stack(transformed_components), dim=0)
+
+        quantized_transform = self.quantize_transfer(approximated_transform, target_latents, target_latents)
+
+        return quantized_transform
 
     
     def salt(self, input, query_latents, target_latents, max_steps=1, tolerance=1e-3):
@@ -130,7 +144,7 @@ class AutoConcatenator():
             for block in input_embeddings:
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
                 # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
-                transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
