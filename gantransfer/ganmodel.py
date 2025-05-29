@@ -15,15 +15,15 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv1d(1024, 64, kernel_size=3, padding="same", padding_mode="reflect"),
+            nn.Conv1d(1024, 256, kernel_size=5, padding="same", padding_mode="reflect"),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 16, kernel_size=3, padding="same", padding_mode="reflect"),
-            nn.BatchNorm1d(16),
-            nn.LeakyReLU(),
-            nn.Conv1d(16, 64, kernel_size=3, padding="same", padding_mode="reflect"),
+            nn.Conv1d(256, 64, kernel_size=5, padding="same", padding_mode="reflect"),
             nn.BatchNorm1d(64),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 1024, kernel_size=3, padding="same", padding_mode="reflect")
+            nn.Conv1d(64, 256, kernel_size=5, padding="same", padding_mode="reflect"),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(),
+            nn.Conv1d(256, 1024, kernel_size=5, padding="same", padding_mode="reflect")
         )
 
     def forward(self, input):
@@ -177,7 +177,7 @@ class DACGAN(pl.LightningModule):
         d_fake = self.discriminator(Z_query, transformed_decoded)
         fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
-        gen_loss = 1e-5*(1/fake_adversarial_loss) + self.lambda_embedding * embedding_loss
+        gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
         self.log("gen_loss", gen_loss, prog_bar=True)
         self.log("emb_mse", embedding_loss, prog_bar=True)
         gen_optimizer.zero_grad()
