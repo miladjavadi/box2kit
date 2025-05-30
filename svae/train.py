@@ -49,7 +49,7 @@ def main(args):
             kl_div = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
 
             # backprop
-            step_nr = epoch*len(loop) + i
+            step_nr = epoch*len(train_loader) + i
             beta = annealed_beta(step_nr, 10000)
             loss = reconstruction_loss + beta*kl_div
             optimizer.zero_grad()
