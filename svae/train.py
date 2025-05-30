@@ -13,6 +13,9 @@ import argparse
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SAMPLE_RATE = 48000
 
+def annealed_beta(current_step, total_steps):
+    return min(1.0, current_step / total_steps)
+
 def main(args):
     H_DIM = args.hdim
     Z_DIM = args.zdim
@@ -46,7 +49,9 @@ def main(args):
             kl_div = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
 
             # backprop
-            loss = reconstruction_loss + kl_div
+            step_nr = epoch*len(loop) + i
+            beta = annealed_beta(step_nr, 10000)
+            loss = reconstruction_loss + beta*kl_div
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
