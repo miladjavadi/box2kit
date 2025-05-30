@@ -2,3 +2,4 @@ descript_audio_codec
 torchaudio
 lightning
 cvxpy
+git+https://github.com/descriptinc/audiotools
