@@ -24,7 +24,8 @@ def main(args):
     LR = args.lr
     TEMPO = args.bpm
     SUBDIVS = args.subdivs
-    OUT_FILE = args.out
+    TEST_FILE = args.test
+    TEST_OUT = args.out
 
     block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
 
@@ -59,12 +60,12 @@ def main(args):
             loop.set_postfix({"loss": loss.item(),
                             "recon_loss": reconstruction_loss.item(), 
                             "kl_div": kl_div.item()})
-    if OUT_FILE is not None:
+    if TEST_FILE is not None:
         with torch.inference_mode():
             test_wave = [load_mono("tester.wav", SAMPLE_RATE)]
             segs = reshape_data(test_wave, block_length).to(DEVICE)
             reconstructed_wave = torch.cat([model(seg) for seg in segs], dim=2).squeeze(0)
-            torchaudio.save(OUT_FILE, reconstructed_wave.cpu()[0])
+            torchaudio.save(TEST_OUT, reconstructed_wave.cpu()[0])
 
         
 if __name__ == "__main__":
@@ -78,6 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=3e-5)
     parser.add_argument("--bpm", help="Model tempo", metavar="bpm", default=90)
     parser.add_argument("--subdivs", help="Segments per bar", metavar="divs", default=8)
-    parser.add_argument("--out", help="Name of output test file", type="str", metavar="filename", default=None)
+    parser.add_argument("--test", help="Test model on file after training", metavar="audio_file_path", default=None)
+    parser.add_argument("--out", help="Name of output test file", type=str, metavar="filename", default=None)
     args=parser.parse_args()
     main(args)
