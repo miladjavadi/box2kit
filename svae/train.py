@@ -79,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=3e-5)
     parser.add_argument("--bpm", help="Model tempo", metavar="bpm", default=90)
     parser.add_argument("--subdivs", help="Segments per bar", metavar="divs", default=8)
-    parser.add_argument("--test", help="Test model on file after training", metavar="audio_file_path", default=None)
+    parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--out", help="Name of output test file", type=str, metavar="filename", default=None)
     args=parser.parse_args()
     main(args)
