@@ -71,7 +71,7 @@ class SingleVAE(nn.Module):
         return x_hat, mu, sigma
 
 if __name__ == "__main__":
-    x = torch.randn(4, 1, 4800)
+    x = torch.randn(1, 1, 4800)
     vae = SingleVAE(input_dim = 4800)
 
     x_hat, mu, sigma = vae(x)

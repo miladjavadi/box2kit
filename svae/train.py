@@ -62,10 +62,10 @@ def main(args):
                             "kl_div": kl_div.item()})
     if TEST_FILE is not None:
         with torch.inference_mode():
-            test_wave = [load_mono("tester.wav", SAMPLE_RATE)]
+            test_wave = [load_mono(TEST_FILE, SAMPLE_RATE)]
             segs = reshape_data(test_wave, block_length).to(DEVICE)
-            reconstructed_wave = torch.cat([model(seg) for seg in segs], dim=2).squeeze(0)
-            torchaudio.save(TEST_OUT, reconstructed_wave.cpu()[0])
+            reconstructed_wave = torch.cat([model(seg.unsqueeze(0))[0] for seg in segs], dim=2).squeeze(0)
+            torchaudio.save(TEST_OUT, reconstructed_wave.cpu(), SAMPLE_RATE)
 
         
 if __name__ == "__main__":
