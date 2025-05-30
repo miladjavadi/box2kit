@@ -30,7 +30,8 @@ def main(args):
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
     model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=LR)
-    reconstruction_loss_fn = MelSpectrogramLoss()
+    mel_loss_fn = MelSpectrogramLoss()
+    stft_loss_fn = MultiScaleSTFTLoss()
 
     for epoch in range(NUM_EPOCHS):
         loop = tqdm(enumerate(train_loader))
@@ -40,7 +41,8 @@ def main(args):
             x_hat, mu, sigma = model(x)
 
             # losses
-            reconstruction_loss = reconstruction_loss_fn(AudioSignal(x_hat, SAMPLE_RATE), AudioSignal(x, SAMPLE_RATE))
+            x_hat_AS, x_AS = AudioSignal(x_hat, SAMPLE_RATE), AudioSignal(x, SAMPLE_RATE)
+            reconstruction_loss = mel_loss_fn(x_hat_AS, x_AS) + stft_loss_fn(x_hat_AS, x_AS)
             kl_div = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
 
             # backprop
