@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from utils.load_data import load_dir, load_mono, reshape_data
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from audiotools import AudioSignal
+from torch.utils.tensorboard import SummaryWriter
 import argparse
 import math
 
@@ -39,8 +40,11 @@ def main(args):
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
     model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=LR)
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, NUM_EPOCHS, eta_min=0.0, last_epoch=-1)
     mel_loss_fn = MelSpectrogramLoss()
     stft_loss_fn = MultiScaleSTFTLoss()
+
+    # writer = SummaryWriter()
 
     for epoch in range(NUM_EPOCHS):
         loop = tqdm(enumerate(train_loader))
@@ -56,8 +60,8 @@ def main(args):
 
             # backprop
             step_nr = epoch*len(train_loader) + i
-            beta = cos_annealed_beta(step_nr, NUM_EPOCHS*len(train_loader))
-            # beta = 0
+            # beta = cos_annealed_beta(step_nr, NUM_EPOCHS*len(train_loader))
+            beta = 1
             loss = reconstruction_loss + beta*kl_div
             optimizer.zero_grad()
             loss.backward()
@@ -66,6 +70,9 @@ def main(args):
                             "recon_loss": reconstruction_loss.item(), 
                             "kl_div": kl_div.item(), 
                             "beta": beta})
+        # writer.add_scalar("Loss/train", loss, epoch)
+        # writer.add_scalar("Learning_rate", scheduler.get_last_lr(), epoch)
+        # scheduler.step()
     if TEST_FILE is not None:
         with torch.inference_mode():
             test_wave = [load_mono(TEST_FILE, SAMPLE_RATE)]
