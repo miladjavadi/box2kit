@@ -8,13 +8,17 @@ from utils.load_data import load_dir, load_mono, reshape_data
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from audiotools import AudioSignal
 import argparse
+import math
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SAMPLE_RATE = 48000
 
-def annealed_beta(current_step, total_steps):
+def lin_annealed_beta(current_step, total_steps):
     return min(1.0, current_step / total_steps)
+
+def cos_annealed_beta(current_step, total_steps):
+    return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
 def main(args):
     H_DIM = args.hdim
@@ -52,14 +56,16 @@ def main(args):
 
             # backprop
             step_nr = epoch*len(train_loader) + i
-            beta = annealed_beta(step_nr, 10000)
+            beta = cos_annealed_beta(step_nr, NUM_EPOCHS*len(train_loader))
+            # beta = 0
             loss = reconstruction_loss + beta*kl_div
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             loop.set_postfix({"loss": loss.item(),
                             "recon_loss": reconstruction_loss.item(), 
-                            "kl_div": kl_div.item()})
+                            "kl_div": kl_div.item(), 
+                            "beta": beta})
     if TEST_FILE is not None:
         with torch.inference_mode():
             test_wave = [load_mono(TEST_FILE, SAMPLE_RATE)]
@@ -72,7 +78,7 @@ if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
 
     parser.add_argument("--data", help="Location of data directory", type=str, metavar="path", required=True)
-    parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=200)
+    parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
     parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
     parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
     parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
