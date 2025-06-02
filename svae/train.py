@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 from torch import nn, optim
-from svae.model import SingleVAE, WaveSegmentDataset
+from svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE
 import torchaudio
 from torch.utils.data import DataLoader
 from utils.load_data import load_dir, load_mono, reshape_data
@@ -10,6 +10,7 @@ from audiotools import AudioSignal
 from torch.utils.tensorboard import SummaryWriter
 import argparse
 import math
+from svae.pqmf import PQMF
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,13 +33,18 @@ def main(args):
     TEST_FILE = args.test
     TEST_OUT = args.out
 
-    block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
+    cont_block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
+    block_length = (cont_block_length//2048)*2048
+    remainder = cont_block_length % 2048
+
 
     dataset_path = args.data
 
     dataset = WaveSegmentDataset(dataset_path, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
-    model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
+    pqmf = PQMF()
+    # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
+    model = PQMFVAE(pqmf).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=LR)
     # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, NUM_EPOCHS, eta_min=0.0, last_epoch=-1)
     mel_loss_fn = MelSpectrogramLoss()
@@ -52,6 +58,7 @@ def main(args):
             # forward
             x = x.to(DEVICE)
             x_hat, mu, sigma = model(x)
+            x_hat = torch.nn.functional.pad(x_hat, (0, remainder))
 
             # losses
             x_hat_AS, x_AS = AudioSignal(x_hat, SAMPLE_RATE), AudioSignal(x, SAMPLE_RATE)
@@ -90,8 +97,8 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
     parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
     parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=3e-5)
-    parser.add_argument("--bpm", help="Model tempo", metavar="bpm", default=90)
-    parser.add_argument("--subdivs", help="Segments per bar", metavar="divs", default=8)
+    parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
+    parser.add_argument("--subdivs", help="Segments per bar", metavar="divs", type=int, default=8)
     parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--out", help="Name of output test file", type=str, metavar="filename", default=None)
     args=parser.parse_args()
