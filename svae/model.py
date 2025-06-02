@@ -83,8 +83,12 @@ class SingleVAE(nn.Module):
         x_hat = self.decode(z_reparam)
 
         return x_hat, mu, sigma
-    
+
 class PQMFVAE(nn.Module):
+    """
+    PQMF-to-waveform VAE model based on IRCAM's RAVE:
+    https://github.com/acids-ircam/RAVE/
+    """
     def __init__(self,
                  pqmf: PQMF,
                  nkernels: list[int] = [64, 128, 256, 512],
