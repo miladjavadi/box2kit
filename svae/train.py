@@ -33,9 +33,9 @@ def main(args):
     TEST_FILE = args.test
     TEST_OUT = args.out
 
-    cont_block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
-    block_length = (cont_block_length//2048)*2048
-    remainder = cont_block_length % 2048
+    block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
+    # trunc_block_length = (block_length//2048)*2048
+    # remainder = block_length % 2048
 
 
     dataset_path = args.data
@@ -58,7 +58,7 @@ def main(args):
             # forward
             x = x.to(DEVICE)
             x_hat, mu, sigma = model(x)
-            x_hat = torch.nn.functional.pad(x_hat, (0, remainder))
+            x_hat = x_hat[:,:,:block_length] # the model might extend the sample
 
             # losses
             x_hat_AS, x_AS = AudioSignal(x_hat, SAMPLE_RATE), AudioSignal(x, SAMPLE_RATE)
