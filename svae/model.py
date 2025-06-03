@@ -102,7 +102,7 @@ class PQMFVAE(nn.Module):
         self.pqmf = pqmf
 
         # encoder
-        self.pqmf2hid = EncoderStack(pqmf.N*nchannels, nkernels, kernel_sizes, strides)
+        self.pqmf2hid = EncoderStack(pqmf.n_bands*nchannels, nkernels, kernel_sizes, strides)
         self.hid2mu = nn.Sequential(nn.ZeroPad1d(get_padding(5)),
                                     nn.Conv1d(nkernels[-1],
                                         zdim,
@@ -117,9 +117,9 @@ class PQMFVAE(nn.Module):
         self.z2hid = DecoderStack(zdim, nkernels, kernel_sizes, strides, dilations)
         self.hid2wave = nn.Sequential(nn.ZeroPad1d(get_padding(7)),
                                       nn.Conv1d(nkernels[0],
-                                                nchannels*pqmf.N,
+                                                nchannels*pqmf.n_bands,
                                                 kernel_size=7),
-                                      nn.BatchNorm1d(nchannels*pqmf.N))
+                                      nn.BatchNorm1d(nchannels*pqmf.n_bands))
         self.hid2loud = nn.Sequential(nn.ZeroPad1d(get_padding(3)),
                                         nn.Conv1d(nkernels[0], 1, kernel_size=3))
     
