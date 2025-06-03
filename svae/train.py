@@ -55,7 +55,7 @@ def main(args):
 
     # spectral losses from Descript's AudioTools
     mel_loss_fn = MelSpectrogramLoss(window_lengths=[2048, 1024, 512, 256, 128], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None])
-    full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128, 64])
+    full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32])
     mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16])
 
     # writer = SummaryWriter()
