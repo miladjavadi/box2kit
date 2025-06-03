@@ -142,7 +142,7 @@ class PQMFVAE(nn.Module):
         epsilon = torch.randn_like(sigma)
 
         z_reparam = mu + sigma*epsilon
-        x_hat = self.decode(z_reparam)
+        x_hat = torch.tanh(self.decode(z_reparam))
 
         return x_hat, mu, sigma
 
