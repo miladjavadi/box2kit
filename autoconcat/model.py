@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import cvxpy as cp
 from autoconcat.util import batch_partition
 
 class PairedCorpus():
