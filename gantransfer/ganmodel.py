@@ -16,20 +16,20 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
-            nn.ZeroPad1d(get_padding(3, 2)),
-            nn.Conv1d(1024, 256, kernel_size=3, stride=2),
+            # nn.ZeroPad1d(get_padding(3, 2)),
+            nn.Conv1d(1024, 256, kernel_size=3, padding="same"),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(5, 2)),
-            nn.Conv1d(256, 64, kernel_size=5, stride=2),
+            nn.Conv1d(256, 64, kernel_size=5, padding="same"),
             # nn.BatchNorm1d(64),
             nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(5, 2)),
-            nn.ConvTranspose1d(64, 256, kernel_size=5, stride=2, output_padding=0),
+            nn.Conv1d(64, 256, kernel_size=5, padding="same"),
             # nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(3, 2)),
-            nn.ConvTranspose1d(256, 1024, kernel_size=3, stride=2, output_padding=1)
+            nn.Conv1d(256, 1024, kernel_size=3, padding="same")
         )
 
     def forward(self, input):
@@ -190,7 +190,7 @@ class DACGAN(pl.LightningModule):
         with torch.no_grad():
             transformed_decoded = self.codec.decode(Z_transformed)
 
-        target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
+        # target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
 
         embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
 
