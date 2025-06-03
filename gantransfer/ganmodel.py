@@ -25,11 +25,11 @@ class Generator(nn.Module):
             # nn.BatchNorm1d(64),
             nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(5, 2)),
-            nn.ConvTranspose1d(64, 256, kernel_size=5, stride=2, output_padding=1),
+            nn.ConvTranspose1d(64, 256, kernel_size=5, stride=2, output_padding=0),
             # nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(3, 2)),
-            nn.ConvTranspose1d(256, 1024, kernel_size=3, stride=2, output_padding=1)
+            nn.ConvTranspose1d(256, 1024, kernel_size=3, stride=2, output_padding=0)
         )
 
     def forward(self, input):
