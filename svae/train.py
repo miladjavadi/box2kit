@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 import argparse
 import math
 import os
-from svae.pqmf import PQMF
+from svae.rave_pqmf import PQMF
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

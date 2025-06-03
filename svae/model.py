@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchaudio
 from utils.load_data import load_dir, reshape_data
-from svae.pqmf import PQMF
+from svae.rave_pqmf import PQMF
 
 class WaveSegmentDataset(torch.utils.data.Dataset):
     def __init__(self, dir, segment_length, sr=48000):
@@ -90,7 +90,7 @@ class PQMFVAE(nn.Module):
     https://github.com/acids-ircam/RAVE/
     """
     def __init__(self,
-                 pqmf: PQMF,
+                 pqmf: PQMF = PQMF(),
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
