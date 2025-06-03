@@ -151,6 +151,8 @@ class DACGAN(pl.LightningModule):
             Z_query = self.codec.encode(query)[0]
             Z_target = self.codec.encode(target)[0]
 
+        ### GAN STUFF
+
         # train discriminator
         # self.toggle_optimizer(discr_optimizer)
 
@@ -180,6 +182,8 @@ class DACGAN(pl.LightningModule):
         # # train generator
         # self.toggle_optimizer(gen_optimizer)
 
+        ### NO MORE GAN STUFF
+
         Z_transformed = self.generator(Z_query)
 
         with torch.no_grad():
@@ -189,17 +193,24 @@ class DACGAN(pl.LightningModule):
 
         embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
 
+        ### MORE GAN STUFF
+
         # d_fake = self.discriminator(Z_query, transformed_decoded)
         # fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
         # gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
 
         # trying stuff
+
+        ### NO MORE GAN STUFF
+
+        ### STFT STUFF
         stft_loss = self.stft_loss(AudioSignal(transformed_decoded, self.sr), AudioSignal(target, self.sr))
         gen_loss = stft_loss + self.lambda_embedding * embedding_loss
-
+        ### NO MORE STFT STUFF
 
         self.log("gen_loss", gen_loss, prog_bar=True)
+        # STFT
         self.log("stft_loss", stft_loss, prog_bar=True)
         self.log("emb_mse", embedding_loss, prog_bar=True)
         gen_optimizer.zero_grad()
