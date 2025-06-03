@@ -134,7 +134,7 @@ class PQMFVAE(nn.Module):
         x_wav, x_loud = self.hid2wave(h), self.hid2loud(h)
 
         x_mb = x_wav * x_loud
-        x_hat = self.pqmf.synthesis(x_mb)
+        x_hat = self.pqmf.inverse(x_mb)
         return x_hat
     
     def forward(self, x):
@@ -288,7 +288,7 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)
     pqmf = PQMF()
-    print(pqmf.synthesis(pqmf(x)).shape)
+    print(pqmf.inverse(pqmf(x)).shape)
     # vae = SingleVAE(input_dim = 4800)
     vae = PQMFVAE(pqmf)
     x_hat, mu, sigma = vae(x)
