@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import pytorch_lightning as pl
+from audiotools import AudioSignal
 
 import dac
 import torchaudio
@@ -92,7 +93,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         return x, y
 
 class DACGAN(pl.LightningModule):
-    def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1):
+    def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1, stft_loss = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64])):
         super().__init__()
         self.tensor_device = device
 
@@ -102,6 +103,8 @@ class DACGAN(pl.LightningModule):
         self.lambda_embedding = lambda_embedding
 
         self.block_length_in_samples = block_length_in_samples # needed for inference
+
+        self.stft_loss = stft_loss
         
         # needed to re-initialize discriminator
         self.output_block_length_in_samples = output_block_length_in_samples
@@ -111,6 +114,7 @@ class DACGAN(pl.LightningModule):
         self.codec = codec
         # self.real_labels = torch.full((1), real_label, device=device, dtype=torch.float32)
         # self.fake_labels = torch.full((1), fake_label, device=device, dtype=torch.float32)
+        self.sr = codec.sample_rate
 
         self.automatic_optimization = False
 
@@ -143,42 +147,55 @@ class DACGAN(pl.LightningModule):
             Z_target = self.codec.encode(target)[0]
 
         # train discriminator
-        self.toggle_optimizer(discr_optimizer)
+        # self.toggle_optimizer(discr_optimizer)
 
-        Z_transformed = self.generator(Z_query).detach()
+        # Z_transformed = self.generator(Z_query).detach()
         
+        # with torch.no_grad():
+        #     transformed_decoded = self.codec.decode(Z_transformed)
+
+        # target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
+        
+        # d_real = self.discriminator(Z_query, target)
+        # d_fake = self.discriminator(Z_query, transformed_decoded)
+
+        # real_labels = torch.full(d_real.shape, self.real_label, device=d_real.device, dtype=torch.float32)
+        # fake_labels = torch.full(d_fake.shape, self.fake_label, device=d_fake.device, dtype=torch.float32)
+        
+        # real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
+        # fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+
+        # discr_loss = real_adversarial_loss + fake_adversarial_loss
+        # self.log("discr_loss", discr_loss, prog_bar=True)
+        # discr_optimizer.zero_grad()
+        # self.manual_backward(discr_loss)
+        # discr_optimizer.step()
+        # self.untoggle_optimizer(discr_optimizer)
+
+        # # train generator
+        # self.toggle_optimizer(gen_optimizer)
+
+        Z_transformed = self.generator(Z_query)
+
         with torch.no_grad():
             transformed_decoded = self.codec.decode(Z_transformed)
 
         target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
-        
-        d_real = self.discriminator(Z_query, target)
-        d_fake = self.discriminator(Z_query, transformed_decoded)
 
-        real_labels = torch.full(d_real.shape, self.real_label, device=d_real.device, dtype=torch.float32)
-        fake_labels = torch.full(d_fake.shape, self.fake_label, device=d_fake.device, dtype=torch.float32)
-        
-        real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
-        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
-
-        discr_loss = real_adversarial_loss + fake_adversarial_loss
-        self.log("discr_loss", discr_loss, prog_bar=True)
-        discr_optimizer.zero_grad()
-        self.manual_backward(discr_loss)
-        discr_optimizer.step()
-        self.untoggle_optimizer(discr_optimizer)
-
-        # train generator
-        self.toggle_optimizer(gen_optimizer)
-
-        Z_transformed = self.generator(Z_query)
         embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
 
-        d_fake = self.discriminator(Z_query, transformed_decoded)
-        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+        # d_fake = self.discriminator(Z_query, transformed_decoded)
+        # fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
-        gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
+        # gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
+
+        # trying stuff
+        stft_loss = self.stft_loss(AudioSignal(transformed_decoded, self.sr), AudioSignal(target, self.sr))
+        gen_loss = stft_loss + self.lambda_embedding * embedding_loss
+
+
         self.log("gen_loss", gen_loss, prog_bar=True)
+        self.log("stft_loss", stft_loss, prog_bar=True)
         self.log("emb_mse", embedding_loss, prog_bar=True)
         gen_optimizer.zero_grad()
         self.manual_backward(gen_loss)
