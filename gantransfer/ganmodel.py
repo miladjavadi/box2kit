@@ -98,7 +98,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         return x, y
 
 class DACGAN(pl.LightningModule):
-    def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1, stft_loss = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64])):
+    def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1, lambda_stft=1, stft_loss = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64])):
         super().__init__()
         self.tensor_device = device
 
@@ -106,6 +106,7 @@ class DACGAN(pl.LightningModule):
         self.fake_label = 0
 
         self.lambda_embedding = lambda_embedding
+        self.lambda_stft = lambda_stft
 
         self.block_length_in_samples = block_length_in_samples # needed for inference
 
@@ -154,33 +155,33 @@ class DACGAN(pl.LightningModule):
         ### GAN STUFF
 
         # train discriminator
-        # self.toggle_optimizer(discr_optimizer)
+        self.toggle_optimizer(discr_optimizer)
 
-        # Z_transformed = self.generator(Z_query).detach()
+        Z_transformed = self.generator(Z_query).detach()
         
-        # with torch.no_grad():
-        #     transformed_decoded = self.codec.decode(Z_transformed)
+        with torch.no_grad():
+            transformed_decoded = self.codec.decode(Z_transformed)
 
-        # target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
+        target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
         
-        # d_real = self.discriminator(Z_query, target)
-        # d_fake = self.discriminator(Z_query, transformed_decoded)
+        d_real = self.discriminator(Z_query, target)
+        d_fake = self.discriminator(Z_query, transformed_decoded)
 
-        # real_labels = torch.full(d_real.shape, self.real_label, device=d_real.device, dtype=torch.float32)
-        # fake_labels = torch.full(d_fake.shape, self.fake_label, device=d_fake.device, dtype=torch.float32)
+        real_labels = torch.full(d_real.shape, self.real_label, device=d_real.device, dtype=torch.float32)
+        fake_labels = torch.full(d_fake.shape, self.fake_label, device=d_fake.device, dtype=torch.float32)
         
-        # real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
-        # fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+        real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
-        # discr_loss = real_adversarial_loss + fake_adversarial_loss
-        # self.log("discr_loss", discr_loss, prog_bar=True)
-        # discr_optimizer.zero_grad()
-        # self.manual_backward(discr_loss)
-        # discr_optimizer.step()
-        # self.untoggle_optimizer(discr_optimizer)
+        discr_loss = real_adversarial_loss + fake_adversarial_loss
+        self.log("discr_loss", discr_loss, prog_bar=False)
+        discr_optimizer.zero_grad()
+        self.manual_backward(discr_loss)
+        discr_optimizer.step()
+        self.untoggle_optimizer(discr_optimizer)
 
-        # # train generator
-        # self.toggle_optimizer(gen_optimizer)
+        # train generator
+        self.toggle_optimizer(gen_optimizer)
 
         ### NO MORE GAN STUFF
 
@@ -195,24 +196,23 @@ class DACGAN(pl.LightningModule):
 
         ### MORE GAN STUFF
 
-        # d_fake = self.discriminator(Z_query, transformed_decoded)
-        # fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
+        d_fake = self.discriminator(Z_query, transformed_decoded)
+        fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
 
         # gen_loss = 1/fake_adversarial_loss + self.lambda_embedding * embedding_loss
-
-        # trying stuff
 
         ### NO MORE GAN STUFF
 
         ### STFT STUFF
         stft_loss = self.stft_loss(AudioSignal(transformed_decoded, self.sr), AudioSignal(target, self.sr))
-        gen_loss = stft_loss + self.lambda_embedding * embedding_loss
+        gen_loss = self.lambda_stft * stft_loss + self.lambda_embedding * embedding_loss + 1/fake_adversarial_loss
         ### NO MORE STFT STUFF
 
         self.log("gen_loss", gen_loss, prog_bar=True)
         # STFT
         self.log("stft_loss", stft_loss, prog_bar=True)
         self.log("emb_mse", embedding_loss, prog_bar=True)
+        self.log("fake_discr_loss", fake_adversarial_loss, prog_bar=True)
         gen_optimizer.zero_grad()
         self.manual_backward(gen_loss)
         gen_optimizer.step()
