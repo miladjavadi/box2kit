@@ -16,15 +16,20 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv1d(1024, 256, kernel_size=5, padding="same", padding_mode="reflect"),
-            nn.LeakyReLU(),
-            nn.Conv1d(256, 64, kernel_size=5, padding="same", padding_mode="reflect"),
-            nn.BatchNorm1d(64),
-            nn.LeakyReLU(),
-            nn.Conv1d(64, 256, kernel_size=5, padding="same", padding_mode="reflect"),
+            nn.ZeroPad1d(get_padding(3)),
+            nn.Conv1d(1024, 256, kernel_size=3),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(),
-            nn.Conv1d(256, 1024, kernel_size=5, padding="same", padding_mode="reflect")
+            nn.ZeroPad1d(get_padding(5)),
+            nn.Conv1d(256, 64, kernel_size=5),
+            # nn.BatchNorm1d(64),
+            nn.LeakyReLU(),
+            nn.ZeroPad1d(get_padding(5)),
+            nn.ConvTranspose1d(64, 256, kernel_size=5),
+            # nn.BatchNorm1d(256),
+            nn.LeakyReLU(),
+            nn.ZeroPad1d(get_padding(3)),
+            nn.ConvTranspose1d(256, 1024, kernel_size=3)
         )
 
     def forward(self, input):
@@ -224,3 +229,26 @@ class DACGAN(pl.LightningModule):
     #     keys_to_remove = [k for k in checkpoint['state_dict'] if k.startswith('codec.')]
     #     for k in keys_to_remove:
     #         del checkpoint['state_dict'][k]
+
+def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
+        """
+        Computes 'same' padding given a kernel size, stride an dilation.
+
+        Copied from cached_conv by IRCAM:
+        https://github.com/acids-ircam/cached_conv/blob/master/cached_conv/convs.py
+        """
+        if kernel_size == 1: return (0, 0)
+        p = (kernel_size - 1) * dilation + 1
+        half_p = p // 2
+        if mode == "centered":
+            p_right = p // 2
+            p_left = (p - 1) // 2
+        elif mode == "causal":
+            p_right = 0
+            p_left = p // 2 + (p - 1) // 2
+        elif mode == "anticausal":
+            p_right = p // 2 + (p - 1) // 2
+            p_left = 0
+        else:
+            raise Exception(f"Padding mode {mode} is not valid")
+        return (p_left, p_right)
