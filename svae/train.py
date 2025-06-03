@@ -20,8 +20,11 @@ SAMPLE_RATE = 48000
 def lin_annealed_beta(current_step, total_steps):
     return min(1.0, current_step / total_steps)
 
-def cos_annealed_beta(current_step, total_steps):
+def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
+
+def cos_annealed_beta(current_step, total_steps):
+    return 0.5*(1- math.cos(current_step * math.pi / total_steps))
 
 def main(args):
     H_DIM = args.hdim
@@ -57,10 +60,11 @@ def main(args):
 
     # writer = SummaryWriter()
 
-    try:
-        os.mkdir(TEST_OUT)
-    except FileExistsError:
-        pass
+    if TEST_FILE is not None:
+        try:
+            os.mkdir(TEST_OUT)
+        except FileExistsError:
+            pass
 
     for epoch in range(NUM_EPOCHS):
         loop = tqdm(enumerate(train_loader))
@@ -82,7 +86,7 @@ def main(args):
             # backprop
             step_nr = epoch*len(train_loader) + i
             # beta = cos_annealed_beta(step_nr, NUM_EPOCHS*len(train_loader))
-            beta = 1
+            beta = cos_annealed_beta(step_nr, NUM_EPOCHS*len(train_loader))
             loss = reconstruction_loss + beta*kl_div
             optimizer.zero_grad()
             loss.backward()
