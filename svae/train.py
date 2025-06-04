@@ -54,7 +54,7 @@ def main(args):
     # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, NUM_EPOCHS, eta_min=0.0, last_epoch=-1)
 
     # spectral losses from Descript's AudioTools
-    mel_loss_fn = MelSpectrogramLoss(window_lengths=[2048, 1024, 512, 256, 128], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None])
+    mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None])
     full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32])
     mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16])
 
