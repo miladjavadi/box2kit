@@ -7,11 +7,13 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import pytorch_lightning as pl
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch import Trainer
 import yaml
 
 import dac
 import torchaudio
-from gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
+from gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
@@ -143,8 +145,11 @@ def main(args):
     max_epochs = args.maxepochs
     ckpt_load = args.loadckpt
     lambda_embedding = args.lemb
+    lambda_adversarial = args.ladv
+    warmup = args.warmup
     sort_key = args.ckptkey
     descending = not args.asc
+    nfft = 1024
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -158,12 +163,15 @@ def main(args):
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
         dummy_frame = dac_model.encode(dataloader.dataset[0][0].unsqueeze(0))[0]
+        dummy_stft = torch.stft(dummy_frame, nfft)
         block_length_in_frames = dummy_frame.shape[2]
         output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
 
-    gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
-    
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=True)
+    # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
+    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
+
+    tblogger = TensorBoardLogger(save_dir="ganv2_logs")
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger)
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
@@ -186,6 +194,8 @@ if __name__ == "__main__":
     parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
     parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
     parser.add_argument("--lemb", help="Set importance of embedding loss in generator cost function.", type=float, metavar="lambda", default=1)
+    parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
+    parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
     args=parser.parse_args()
     main(args)
 

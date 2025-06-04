@@ -12,6 +12,8 @@ from audiotools import AudioSignal
 import dac
 import torchaudio
 
+### GENERATOR
+
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
@@ -34,6 +36,8 @@ class Generator(nn.Module):
 
     def forward(self, input):
         return self.main(input)
+    
+### DISCRIMINATOR
 
 class Discriminator(nn.Module):
     # generate discriminator score between 0 and 1.
@@ -82,6 +86,73 @@ class Discriminator(nn.Module):
 
         return output_probability
 
+class DiscriminatorV2(nn.Module):
+    """
+    Adapted from DCGAN's SpecGAN:
+    https://github.com/chrisdonahue/wavegan/blob/master/specgan.py
+    """
+    def __init__(self,
+                 input_dims: list[int],
+                 nkernels: list[int] = [64, 128, 256, 512],
+                 kernel_sizes: list[int] = [5, 5, 5, 5],
+                 strides: list[int] = [2, 2, 2, 2]):
+        super().__init__()
+        self.input_dims = input_dims # STFT dims ([nfft, nframes])
+        self.nkernels = nkernels
+        self.strides = strides
+        self.nfft = input_dims[0]
+        # self.nkernels = nkernels
+        # self.kernel_sizes = kernel_sizes
+        # self.strides = strides
+
+        self.downconv = DownConvolver(input_dims, nkernels, kernel_sizes, strides)
+        self.conv2score = nn.Linear(nkernels[-1]*(input_dims[1]//np.prod(strides)), 1)
+
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x: torch.Tensor):
+        # STFT -> Discriminator score in (0, 1)
+
+        h = self.downconv(x)
+
+        # Flatten convolution outputs
+        h_flat = h.reshape(h.shape[0], self.nkernels[-1]*(self.input_dims[1]//np.prod(self.strides)))
+
+        score = self.sigmoid(self.conv2score(h_flat))
+        return score
+
+
+class DownConvolver(nn.Module):
+    def __init__(self,
+                 input_dims: list[int],
+                 nkernels: list[int],
+                 kernel_sizes: list[int],
+                 strides: list[int]):
+        super().__init__()
+
+        self.net = [nn.Sequential(nn.ZeroPad1d(get_padding(kernel_sizes[0], strides[0])),
+                                  nn.Conv1d(input_dims[0],
+                                            nkernels[0],
+                                            kernel_sizes[0],
+                                            strides[0]),
+                                  nn.LeakyReLU())]
+        
+        for i in range(1, len(nkernels)):
+            self.net.append(nn.Sequential(nn.ZeroPad1d(get_padding(kernel_sizes[i], strides[i])),
+                                          nn.Conv1d(nkernels[i-1],
+                                                    nkernels[i],
+                                                    kernel_sizes[i],
+                                                    strides[i]),
+                                          nn.BatchNorm1d(nkernels[i]),
+                                          nn.LeakyReLU()))
+        
+        self.net = nn.Sequential(*self.net)
+
+    def forward(self, x):
+        return self.net(x)
+
+### DATASET
+
 class PairedWaveformDataset(torch.utils.data.Dataset):
     def __init__(self, query_data, target_data):
         if query_data.shape != target_data.shape:
@@ -96,6 +167,8 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         x = self.query_data[idx]
         y = self.target_data[idx]
         return x, y
+
+### LIGHTNING MODULE
 
 class DACGAN(pl.LightningModule):
     def __init__(self, codec, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=1, lambda_stft=1, stft_loss = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64])):
@@ -241,25 +314,112 @@ class DACGAN(pl.LightningModule):
     #     for k in keys_to_remove:
     #         del checkpoint['state_dict'][k]
 
-def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
-        """
-        Computes 'same' padding given a kernel size, stride an dilation.
+class DACGANV2(pl.LightningModule):
+    def __init__(self,
+                 input_block_length: int,
+                 output_block_lengths: int,
+                 nframes: int,
+                 spectrum_dims: list[int],
+                 lambda_embedding: float = 1,
+                 lambda_adversarial: float = 1,
+                 codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
+                 spectral_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
+                 warmup: int = 250):
+        super().__init__()
 
-        Copied from cached_conv by IRCAM:
-        https://github.com/acids-ircam/cached_conv/blob/master/cached_conv/convs.py
-        """
-        if kernel_size == 1: return (0, 0)
-        p = (kernel_size - 1) * dilation + 1
-        half_p = p // 2
-        if mode == "centered":
-            p_right = p // 2
-            p_left = (p - 1) // 2
-        elif mode == "causal":
-            p_right = 0
-            p_left = p // 2 + (p - 1) // 2
-        elif mode == "anticausal":
-            p_right = p // 2 + (p - 1) // 2
-            p_left = 0
+        self.generator, self.discriminator = self.initialize_models(spectrum_dims)
+        self.codec = codec
+        self.sr = codec.sample_rate
+
+        self.spectral_loss_fn = spectral_loss_fn
+        self.embedding_loss_fn = nn.MSELoss()
+        self.adversarial_loss_fn = nn.BCELoss()
+
+        self.lambda_embedding = lambda_embedding
+        self.lambda_adversarial = lambda_adversarial
+        self.warmup = warmup
+
+        self.adversarial_phase = False
+        # the objective of the discriminator is to return 1 for real target recordings, and 0 for synthesized ones
+        self.real_label = torch.ones(1, dtype=torch.float32)
+        self.fake_label = torch.zeros(1, dtype=torch.float32)
+
+        self.automatic_optimization = False
+    
+    def initialize_models(spectrum_dims: list[int]):
+        generator = Generator()
+        discriminator = DiscriminatorV2(spectrum_dims)
+        return generator, discriminator
+    
+    def forward(self, x):
+        return self.generator(x)
+    
+    def training_step(self, batch, batch_idx):
+        input_waveforms = batch
+        query, target = input_waveforms
+
+        gen_optimizer, discr_optimizer = self.optimizers()
+
+        with torch.no_grad():
+            Z_query = self.codec.encode(query)[0]
+            Z_target = self.codec.encode(target)[0]
+
+        # train generator
+        self.toggle_optimizer(gen_optimizer)
+
+        Z_gen = self.generator(Z_query)
+
+        with torch.no_grad():
+            gen = self.codec.decode(Z_gen)
+            target_post = self.codec.decode(Z_target) # use post-dac target to match dims
+            stft_gen = torch.stft(gen, self.discriminator.nfft)
+            stft_target = torch.stft(target_post, self.discriminator.nfft)
+        
+        # calculate generator losses
+        gen_optimizer.zero_grad()
+
+        spectral_loss = self.spectral_loss_fn(AudioSignal(gen, self.sr), AudioSignal(target_post, self.sr))
+        embedding_loss = self.embedding_loss_fn(Z_gen, Z_target)
+
+        if self.adversarial_phase:
+            # how convinced the discriminator is that generated waveforms are real
+            adversarial_loss = self.adversarial_loss_fn(self.discriminator(stft_gen), self.real_label)
+
         else:
-            raise Exception(f"Padding mode {mode} is not valid")
-        return (p_left, p_right)
+            adversarial_loss = 0
+
+        generator_loss = spectral_loss + self.lambda_embedding * embedding_loss + self.lambda_adversarial * adversarial_loss
+        self.manual_backward(generator_loss)
+        gen_optimizer.step()
+        self.untoggle_optimizer(gen_optimizer)
+
+        # train discriminator
+        if self.adversarial_phase:
+            self.toggle_optimizer(discr_optimizer)
+            discr_optimizer.zero_grad()
+            # how convinced the discriminator is that target waveforms are real, and generated waveforms are fake
+            discr_loss = self.adversarial_loss_fn(self.discriminator(stft_target), self.real_label) + self.adversarial_loss_fn(self.discriminator(stft_gen.detach()), self.fake_label)
+            self.manual_backward(discr_loss)
+            discr_optimizer.step()
+            self.untoggle_optimizer(discr_optimizer)
+    
+    def on_train_epoch_start(self):
+        self.adversarial_phase = True if self.current_epoch >= self.warmup else False
+        return super().on_train_epoch_start()
+        
+
+### UTILITY FUNCTIONS
+
+def get_padding(kernel_size, stride=1, dilation=1):
+    effective_kernel = (kernel_size - 1) * dilation + 1
+    pad_total = max(effective_kernel - stride, 0)
+    pad_left = pad_total // 2
+    pad_right = pad_total - pad_left
+    return (pad_left, pad_right)
+
+if __name__ == "__main__":
+    x = torch.randn(4, 1024, 10000)
+    discr = DiscriminatorV2([x.shape[1], x.shape[2]])
+
+    score = discr(x)
+    print(x.shape)
