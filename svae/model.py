@@ -1,10 +1,16 @@
 import torch
+import numpy as np
+import math
 from torch import nn, optim
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import Callback
 import torchaudio
-from utils.load_data import load_dir, reshape_data
+from utils.load_data import load_dir, reshape_data, load_mono
 from svae.rave_pqmf import PQMF
+from audiotools import AudioSignal
+from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
+import os
 
 class WaveSegmentDataset(torch.utils.data.Dataset):
     def __init__(self, dir, segment_length, sr=48000):
@@ -16,6 +22,7 @@ class WaveSegmentDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx):
         return self.waves[idx]
+
 
 class SingleVAE(nn.Module):
     def __init__(self, input_dim, h_dim=200, z_dim=8, n_channels = 1, sr = 48000, n_kernels = 64):
@@ -84,6 +91,70 @@ class SingleVAE(nn.Module):
 
         return x_hat, mu, sigma
 
+
+class LightningVAE(pl.LightningModule):
+    def __init__(self,
+                 block_length,
+                 pqmf: PQMF = PQMF(),
+                 sample_rate: int = 48000,
+                 nkernels: list[int] = [64, 128, 256, 512],
+                 kernel_sizes: list[int] = [3, 3, 3, 3],
+                 zdim: int = 128,
+                 nchannels: int = 1,
+                 strides: list[int] = [4, 4, 4, 2],
+                 dilations: list[int] = [1, 3, 9],
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
+                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
+                 lr = 1e-4):
+        super().__init__()
+        
+        self.model = PQMFVAE(pqmf,
+                             sample_rate,
+                             nkernels,
+                             kernel_sizes,
+                             zdim,
+                             nchannels,
+                             strides,
+                             dilations)
+
+        self.lr = lr
+        self.mel_loss_fn = mel_loss_fn
+        self.full_stft_loss_fn = full_stft_loss_fn
+        self.mb_stft_loss_fn = mb_stft_loss_fn
+
+    def forward(self, x):
+        return self.model(x)
+    
+    def training_step(self, batch, batch_idx):
+        # forward
+
+        x_hat, mu, sigma = self.model(batch)
+        x_hat = x_hat[:,:,:batch.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+
+        # losses
+        x_hat_AS, x_AS = AudioSignal(x_hat, self.model.sample_rate), AudioSignal(x, self.model.sample_rate)
+        fullband_reconstruction_loss = self.mel_loss_fn(x_hat_AS, x_AS) + self.full_stft_loss_fn(x_hat_AS, x_AS)
+
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(x_hat), self.sr), AudioSignal(self.model.pqmf(x), self.sr))
+        reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
+
+        kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+
+        # backprop
+        beta = cos_annealed_beta(self.trainer.global_step, self.trainer.max_steps)
+        loss = reconstruction_loss + beta*kl_div
+
+        self.log("loss", loss, prog_bar=True, on_step=True, on_epoch=True, logger=True)
+        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=True, on_epoch=True, logger=True)
+        self.log("kld", kl_div, prog_bar=True, on_step=True, on_epoch=True, logger=True)
+        self.log("beta", beta, prog_bar=True, on_epoch=True, logger=True)
+        return loss
+    
+    def configure_optimizers(self):
+        optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        return [optimizer], []
+    
 class PQMFVAE(nn.Module):
     """
     PQMF-to-waveform VAE model based on IRCAM's RAVE:
@@ -91,6 +162,7 @@ class PQMFVAE(nn.Module):
     """
     def __init__(self,
                  pqmf: PQMF = PQMF(),
+                 sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
@@ -100,6 +172,8 @@ class PQMFVAE(nn.Module):
         super().__init__()
 
         self.pqmf = pqmf
+        self.strides = strides
+        self.sr = sample_rate
 
         # encoder
         self.pqmf2hid = EncoderStack(pqmf.n_band*nchannels, nkernels, kernel_sizes, strides)
@@ -261,6 +335,42 @@ class DecoderStack(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+class GenerationCallback(Callback):
+    def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
+        self.test_file = test_file
+        self.test_freq = test_freq
+        self.out_dir = out_dir
+        self.block_length = block_length
+
+        self.output_test = self.test_file is not None and self.out_dir is not None
+
+    def on_train_start(self, trainer, pl_module):
+        if self.output_test:
+            try:
+                os.mkdir(self.out_dir)
+            except FileExistsError:
+                pass
+        return super().on_train_start(trainer, pl_module)
+    
+    def on_train_epoch_end(self, trainer, pl_module):
+        epoch = pl_module.trainer.curent_epoch
+        if epoch % self.test_freq == 0 and self.output_test:
+            test_wave = [load_mono(self.test_file, pl_module.sr)]
+            test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
+            reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
+
+            torchaudio.save(f"{self.out_dir}/epoch_{epoch}", reconstructed_wave.cpu(), pl_module.sr)
+        return super().on_train_epoch_end(trainer, pl_module)
+    
+    def on_train_end(self, trainer, pl_module):
+        if self.output_test:
+            test_wave = [load_mono(self.test_file, pl_module.sr)]
+            test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
+            reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
+
+            torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}", reconstructed_wave.cpu(), pl_module.sr)
+        return super().on_train_end(trainer, pl_module)
+
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
         """
         Computes 'same' padding given a kernel size, stride an dilation.
@@ -284,6 +394,15 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
             raise Exception(f"Padding mode {mode} is not valid")
         return (p_left, p_right)
         # return p_right
+
+def cos_annealed_beta(current_step, total_steps):
+    return 0.5*(1- math.cos(current_step * math.pi / total_steps))
+
+def lin_annealed_beta(current_step, total_steps):
+    return min(1.0, current_step / total_steps)
+
+def warm_cos_annealed_beta(current_step, total_steps):
+    return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)

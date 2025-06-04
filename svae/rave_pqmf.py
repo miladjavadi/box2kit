@@ -8,6 +8,11 @@ from scipy.optimize import fmin
 from scipy.signal import firwin, kaiser_beta, kaiserord
 from scipy.signal.windows import kaiser
 
+"""
+    Copied from IRCAM ACID'S RAVE:
+    https://github.com/acids-ircam/RAVE/blob/master/rave/pqmf.py
+"""
+
 
 def reverse_half(x):
     mask = torch.ones_like(x)
