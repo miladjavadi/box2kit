@@ -402,6 +402,14 @@ class DACGANV2(pl.LightningModule):
             self.manual_backward(discr_loss)
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)
+        else:
+            discr_loss = 0
+        
+        self.log("d_loss", discr_loss, prog_bar=True, logger=True)
+        self.log("g_loss", generator_loss, prog_bar=True, logger=True)
+        self.log("spectral_loss", spectral_loss, prog_bar=True, logger=True)
+        self.log("embedding_loss", embedding_loss, prog_bar=True, logger=True)
+        self.log("adversarial_loss", adversarial_loss, prog_bar=True, logger=True)
     
     def validation_step(self, batch):
         pass
