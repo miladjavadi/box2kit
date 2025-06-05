@@ -365,7 +365,7 @@ class DACGANV2(pl.LightningModule):
             Z_target = self.codec.encode(target)[0]
 
         # train generator
-        self.toggle_optimizer(gen_optimizer)
+        self.toggle_optimizer(0)
 
         Z_gen = self.generator(Z_query)
 
@@ -391,17 +391,17 @@ class DACGANV2(pl.LightningModule):
         generator_loss = spectral_loss + self.lambda_embedding * embedding_loss + self.lambda_adversarial * adversarial_loss
         self.manual_backward(generator_loss)
         gen_optimizer.step()
-        self.untoggle_optimizer(gen_optimizer)
+        self.untoggle_optimizer(0)
 
         # train discriminator
         if self.adversarial_phase:
-            self.toggle_optimizer(discr_optimizer)
+            self.toggle_optimizer(1)
             discr_optimizer.zero_grad()
             # how convinced the discriminator is that target waveforms are real, and generated waveforms are fake
             discr_loss = self.adversarial_loss_fn(self.discriminator(stft_target), self.real_label) + self.adversarial_loss_fn(self.discriminator(stft_gen.detach()), self.fake_label)
             self.manual_backward(discr_loss)
             discr_optimizer.step()
-            self.untoggle_optimizer(discr_optimizer)
+            self.untoggle_optimizer(1)
     
     def validation_step(self, batch):
         pass
