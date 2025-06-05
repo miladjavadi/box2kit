@@ -403,9 +403,26 @@ class DACGANV2(pl.LightningModule):
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)
     
+    def validation_step(self, batch):
+        pass
+    
+    def configure_optimizers(self):
+        gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        return [gen_optimizer, discr_optimizer], []
+    
     def on_train_epoch_start(self):
+        self.codec.eval()
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
         return super().on_train_epoch_start()
+
+    def on_fit_epoch_start(self):
+        self.codec.eval()
+        super().on_fit_epoch_start()
+    
+    def on_validation_epoch_start(self):
+        self.codec.eval()
+        super().on_fit_epoch_start()
         
 
 ### UTILITY FUNCTIONS
