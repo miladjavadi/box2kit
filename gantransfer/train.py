@@ -30,7 +30,7 @@ def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
 def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples: int) -> torch.FloatTensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths_in_samples]
 
-    dataset = torch.zeros((0, block_length_in_samples))
+    dataset = torch.zeros((0, block_length_in_samples), device=waveforms[0].device)
     for waveform in waveforms:
         # trim waveform to whole number of block lengths
         waveform = waveform[:,:((waveform.shape[1]//block_length_in_samples)*block_length_in_samples)]
