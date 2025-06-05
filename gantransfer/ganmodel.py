@@ -346,7 +346,7 @@ class DACGANV2(pl.LightningModule):
 
         self.automatic_optimization = False
     
-    def initialize_models(spectrum_dims: list[int]):
+    def initialize_models(self, spectrum_dims: list[int]):
         generator = Generator()
         discriminator = DiscriminatorV2(spectrum_dims)
         return generator, discriminator
