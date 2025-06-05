@@ -93,6 +93,7 @@ class DiscriminatorV2(nn.Module):
     """
     def __init__(self,
                  input_dims: list[int],
+                 nfft: int = None,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [5, 5, 5, 5],
                  strides: list[int] = [2, 2, 2, 2]):
@@ -100,7 +101,12 @@ class DiscriminatorV2(nn.Module):
         self.input_dims = input_dims # STFT dims ([nfft, nframes])
         self.nkernels = nkernels
         self.strides = strides
-        self.nfft = input_dims[0]
+        
+        if nfft is not None:
+            self.nfft = nfft
+        else:
+            self.nfft = (input_dims[0]-1)*2 # assumed even-numbered fft window
+        
         # self.nkernels = nkernels
         # self.kernel_sizes = kernel_sizes
         # self.strides = strides
@@ -320,6 +326,7 @@ class DACGANV2(pl.LightningModule):
                  output_block_lengths: int,
                  nframes: int,
                  spectrum_dims: list[int],
+                 nfft: int = None,
                  lambda_embedding: float = 1,
                  lambda_adversarial: float = 1,
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
@@ -327,7 +334,7 @@ class DACGANV2(pl.LightningModule):
                  warmup: int = 250):
         super().__init__()
 
-        self.generator, self.discriminator = self.initialize_models(spectrum_dims)
+        self.generator, self.discriminator = self.initialize_models(spectrum_dims, nfft)
         self.codec = codec
         self.sr = codec.sample_rate
 
@@ -346,9 +353,9 @@ class DACGANV2(pl.LightningModule):
 
         self.automatic_optimization = False
     
-    def initialize_models(self, spectrum_dims: list[int]):
+    def initialize_models(self, spectrum_dims: list[int], nfft: int = None):
         generator = Generator()
-        discriminator = DiscriminatorV2(spectrum_dims)
+        discriminator = DiscriminatorV2(spectrum_dims, n_fft=nfft)
         return generator, discriminator
     
     def forward(self, x):
