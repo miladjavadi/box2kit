@@ -30,7 +30,7 @@ def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
 def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples: int) -> torch.FloatTensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths_in_samples]
 
-    dataset = torch.zeros((0, block_length_in_samples), device=waveforms[0].device)
+    dataset = torch.zeros((0, block_length_in_samples))
     for waveform in waveforms:
         # trim waveform to whole number of block lengths
         waveform = waveform[:,:((waveform.shape[1]//block_length_in_samples)*block_length_in_samples)]
@@ -42,13 +42,13 @@ def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples:
     dataset = dataset.unsqueeze(1)
     return dataset
 
-def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str) -> torch.utils.data.DataLoader:
+def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int) -> torch.utils.data.DataLoader:
     query_files = sorted(os.listdir(query_dir))
     target_files = sorted(os.listdir(target_dir))
 
     # load in all waveforms
-    query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr).to(device) for file in query_files if file[-4:] == ".wav"]
-    target_waveforms = [load_mono((f"{target_dir}/{file}"), model_sr).to(device) for file in target_files if file[-4:] == ".wav"]
+    query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr) for file in query_files if file[-4:] == ".wav"]
+    target_waveforms = [load_mono((f"{target_dir}/{file}"), model_sr) for file in target_files if file[-4:] == ".wav"]
 
     query_dataset = reshape_dataset(query_waveforms, block_length_in_samples)
     target_dataset = reshape_dataset(target_waveforms, block_length_in_samples)
@@ -157,15 +157,16 @@ def main(args):
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    dataloader = prepare_dataloader(query_dir, target_dir, block_length_in_samples, batch_size, model_sr, device)
+    dataloader = prepare_dataloader(query_dir, target_dir, block_length_in_samples, batch_size, model_sr)
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
         dummy_frame = dac_model.encode(dataloader.dataset[0][0].unsqueeze(0))[0]
-        dummy_stft = torch.stft(dummy_frame, nfft)
         block_length_in_frames = dummy_frame.shape[2]
-        output_block_length_in_samples = dac_model.decode(dummy_frame).shape[2]
+        output_block = dac_model.decode(dummy_frame)
+        output_block_length_in_samples = output_block.shape[2]
+        dummy_stft = torch.stft(output_block, nfft)
 
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
