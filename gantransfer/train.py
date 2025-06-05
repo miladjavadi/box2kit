@@ -166,7 +166,7 @@ def main(args):
         block_length_in_frames = dummy_frame.shape[2]
         output_block = dac_model.decode(dummy_frame)
         output_block_length_in_samples = output_block.shape[2]
-        dummy_stft = torch.stft(output_block, nfft, return_complex=True).abs()
+        dummy_stft = torch.stft(output_block.squeeze(1), nfft, return_complex=True, window=torch.hann_window(nfft, device=output_block.device)).abs()
 
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)

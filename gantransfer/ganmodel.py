@@ -372,8 +372,8 @@ class DACGANV2(pl.LightningModule):
         with torch.no_grad():
             gen = self.codec.decode(Z_gen)
             target_post = self.codec.decode(Z_target) # use post-dac target to match dims
-            stft_gen = torch.stft(gen, self.discriminator.nfft)
-            stft_target = torch.stft(target_post, self.discriminator.nfft)
+            stft_gen = torch.stft(gen.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=gen.device)).abs()
+            stft_target = torch.stft(target_post.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=target_post.device)).abs()
         
         # calculate generator losses
         gen_optimizer.zero_grad()
