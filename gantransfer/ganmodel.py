@@ -348,10 +348,11 @@ class DACGANV2(pl.LightningModule):
 
         self.adversarial_phase = False
         # the objective of the discriminator is to return 1 for real target recordings, and 0 for synthesized ones
-        self.real_label = torch.ones(1, dtype=torch.float32)
-        self.fake_label = torch.zeros(1, dtype=torch.float32)
 
         self.automatic_optimization = False
+
+        self.real_label = 1
+        self.fake_label = 0
     
     def initialize_models(self, spectrum_dims: list[int], nfft: int = None):
         generator = Generator()
@@ -389,8 +390,10 @@ class DACGANV2(pl.LightningModule):
         embedding_loss = self.embedding_loss_fn(Z_gen, Z_target)
 
         if self.adversarial_phase:
+            gen_score = self.discriminator(stft_gen)
+            real_labels = torch.full_like(gen_score, fill_value=self.real_label)
             # how convinced the discriminator is that generated waveforms are real
-            adversarial_loss = self.adversarial_loss_fn(self.discriminator(stft_gen), self.real_label)
+            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
 
         else:
             adversarial_loss = 0
@@ -405,7 +408,13 @@ class DACGANV2(pl.LightningModule):
             self.toggle_optimizer(discr_optimizer)
             discr_optimizer.zero_grad()
             # how convinced the discriminator is that target waveforms are real, and generated waveforms are fake
-            discr_loss = self.adversarial_loss_fn(self.discriminator(stft_target), self.real_label) + self.adversarial_loss_fn(self.discriminator(stft_gen.detach()), self.fake_label)
+            real_score = self.discriminator(stft_target)
+            gen_score = self.discriminator(stft_gen.detach())
+
+            real_labels = torch.full_like(real_score, fill_value=self.real_label)
+            fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
+
+            discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
             self.manual_backward(discr_loss)
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)
