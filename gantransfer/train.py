@@ -169,7 +169,7 @@ def main(args):
         dummy_stft = torch.stft(output_block.squeeze(1), nfft, return_complex=True, window=torch.hann_window(nfft, device=output_block.device)).abs()
 
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
-    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
+    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
     tblogger = TensorBoardLogger(save_dir="ganv2_logs")
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger)
