@@ -353,6 +353,11 @@ class DACGANV2(pl.LightningModule):
 
         self.real_label = 1
         self.fake_label = 0
+
+        self.codec.eval()
+        self.codec.requires_grad_(False)
+
+        self.save_hyperparameters()
     
     def initialize_models(self, spectrum_dims: list[int], nfft: int = None):
         generator = Generator()

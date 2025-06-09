@@ -132,7 +132,8 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 
     checkpoint_path = get_checkpoint_path(checkpoint_folder, key, descending=descending)
 
-    checkpoint = DACGAN.load_from_checkpoint(checkpoint_path, codec=codec, device=device, **hparams)
+    # checkpoint = DACGAN.load_from_checkpoint(checkpoint_path, codec=codec, device=device, **hparams)
+    checkpoint = DACGANV2.load_from_checkpoint(checkpoint_path, map_location=torch.device(device), **hparams)
 
     return checkpoint
 
