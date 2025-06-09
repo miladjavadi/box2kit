@@ -123,6 +123,8 @@ class LightningVAE(pl.LightningModule):
         self.full_stft_loss_fn = full_stft_loss_fn
         self.mb_stft_loss_fn = mb_stft_loss_fn
 
+        self.save_hyperparameters()
+
     def forward(self, x):
         return self.model(x)
     
