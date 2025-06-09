@@ -346,6 +346,10 @@ class DACGANV2(pl.LightningModule):
         self.lambda_adversarial = lambda_adversarial
         self.warmup = warmup
 
+        self.input_block_length = input_block_length
+        self.output_block_length = output_block_lengths
+        self.nframes = nframes
+
         self.adversarial_phase = False
         # the objective of the discriminator is to return 1 for real target recordings, and 0 for synthesized ones
 
