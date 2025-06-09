@@ -355,7 +355,7 @@ class GenerationCallback(Callback):
         return super().on_train_start(trainer, pl_module)
     
     def on_train_epoch_end(self, trainer, pl_module):
-        epoch = pl_module.trainer.curent_epoch
+        epoch = pl_module.trainer.current_epoch
         if epoch % self.test_freq == 0 and self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.sr)]
             test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
