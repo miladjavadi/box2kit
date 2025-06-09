@@ -362,7 +362,7 @@ class GenerationCallback(Callback):
             test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
             reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
-            torchaudio.save(f"{self.out_dir}/epoch_{epoch}", reconstructed_wave.cpu(), pl_module.model.sr)
+            torchaudio.save(f"{self.out_dir}/epoch_{epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_epoch_end(trainer, pl_module)
     
     def on_train_end(self, trainer, pl_module):
@@ -371,7 +371,7 @@ class GenerationCallback(Callback):
             test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
             reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
-            torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}", reconstructed_wave.cpu(), pl_module.model.sr)
+            torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
 
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
