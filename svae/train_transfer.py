@@ -69,7 +69,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
 
-    parser.add_argument("--data", help="Location of data directory", type=str, metavar="path", required=True)
+    parser.add_argument("--query", help="Location of query data.", type=str, metavar="path", required=True)
+    parser.add_argument("--target", help="Location of target data.", type=str, metavar="path", required=True)
     parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
     parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
     parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
