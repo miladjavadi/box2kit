@@ -138,7 +138,7 @@ class LightningVAE(pl.LightningModule):
         x_hat_AS, x_AS = AudioSignal(x_hat, self.model.sr), AudioSignal(batch, self.model.sr)
         fullband_reconstruction_loss = self.mel_loss_fn(x_hat_AS, x_AS) + self.full_stft_loss_fn(x_hat_AS, x_AS)
 
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(x_hat), self.sr), AudioSignal(self.model.pqmf(batch), self.sr))
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(x_hat), self.model.sr), AudioSignal(self.model.pqmf(batch), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
         kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
