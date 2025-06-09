@@ -211,7 +211,7 @@ class TransferVAE(LightningVAE):
         # forward
 
         y_hat, mu, sigma = self.model(x)
-        y_hat = y_hat[:,:,:batch.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+        y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # losses
         y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
