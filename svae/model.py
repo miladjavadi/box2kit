@@ -135,10 +135,10 @@ class LightningVAE(pl.LightningModule):
         x_hat = x_hat[:,:,:batch.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # losses
-        x_hat_AS, x_AS = AudioSignal(x_hat, self.model.sr), AudioSignal(x, self.model.sr)
+        x_hat_AS, x_AS = AudioSignal(x_hat, self.model.sr), AudioSignal(batch, self.model.sr)
         fullband_reconstruction_loss = self.mel_loss_fn(x_hat_AS, x_AS) + self.full_stft_loss_fn(x_hat_AS, x_AS)
 
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(x_hat), self.sr), AudioSignal(self.model.pqmf(x), self.sr))
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(x_hat), self.sr), AudioSignal(self.model.pqmf(batch), self.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
         kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
