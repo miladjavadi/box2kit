@@ -145,13 +145,13 @@ class LightningVAE(pl.LightningModule):
         kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
 
         # backprop
-        beta = cos_annealed_beta(self.trainer.global_step, self.trainer.max_steps)
+        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
         loss = reconstruction_loss + beta*kl_div
 
-        self.log("loss", loss, prog_bar=True, on_step=True, on_epoch=True, logger=True)
-        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=True, on_epoch=True, logger=True)
-        self.log("kld", kl_div, prog_bar=True, on_step=True, on_epoch=True, logger=True)
-        self.log("beta", beta, prog_bar=True, on_epoch=True, logger=True)
+        self.log("loss", loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         return loss
     
     def configure_optimizers(self):
