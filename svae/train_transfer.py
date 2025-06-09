@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 from torch import nn, optim
-from svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE, LightningVAE, GenerationCallback
+from svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE, GenerationCallback, TransferVAE, PairedWaveformDataset
 import torchaudio
 from torch.utils.data import DataLoader
 from utils.load_data import load_dir, load_mono, reshape_data
@@ -41,9 +41,10 @@ def main(args):
     # remainder = block_length % 2048
 
 
-    dataset_path = args.data
+    query_dir = args.query
+    target_dir = args.target
 
-    dataset = WaveSegmentDataset(dataset_path, block_length, SAMPLE_RATE)
+    dataset = PairedWaveformDataset(query_dir, target_dir, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
     # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     # model = PQMFVAE(pqmf).to(DEVICE)
@@ -55,12 +56,12 @@ def main(args):
     # full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32])
     # mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16])
 
-    model = LightningVAE(block_length, lr=LR)
+    model = TransferVAE(block_length, lr=LR)
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
 
-    tblogger = TensorBoardLogger(save_dir="svae_logs", name=EXPERIMENT_NAME)
+    tblogger = TensorBoardLogger(save_dir="transvae_logs", name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, callbacks=GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ), logger=tblogger)
     trainer.fit(model, train_dataloaders=train_loader, ckpt_path=ckpt)
 

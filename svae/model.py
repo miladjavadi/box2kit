@@ -23,6 +23,25 @@ class WaveSegmentDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return self.waves[idx]
 
+class PairedWaveformDataset(torch.utils.data.Dataset):
+    def __init__(self, query_dir, target_dir, segment_length, sr=48000):
+        # if query_data.shape != target_data.shape:
+        #     raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {query_data.shape}, while target dataset has shape {target_data.shape})")
+        # self.query_data = query_data
+        # self.target_data = target_data
+        self.query_data = reshape_data(load_dir(query_dir, sr), segment_length)
+        self.target_data = reshape_data(load_dir(target_dir, sr), segment_length)
+
+        if self.query_data.shape != self.target_data.shape:
+            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.query_data.shape}, while target dataset has shape {self.target_data.shape})")
+    
+    def __len__(self):
+        return self.query_data.shape[0]
+    
+    def __getitem__(self, idx: int):
+        x = self.query_data[idx]
+        y = self.target_data[idx]
+        return x, y
 
 class SingleVAE(nn.Module):
     def __init__(self, input_dim, h_dim=200, z_dim=8, n_channels = 1, sr = 48000, n_kernels = 64):
@@ -91,7 +110,6 @@ class SingleVAE(nn.Module):
 
         return x_hat, mu, sigma
 
-
 class LightningVAE(pl.LightningModule):
     def __init__(self,
                  block_length,
@@ -157,6 +175,62 @@ class LightningVAE(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         return [optimizer], []
+    
+class TransferVAE(LightningVAE):
+    def __init__(self,
+                 block_length,
+                 pqmf: PQMF = PQMF(),
+                 sample_rate: int = 48000,
+                 nkernels: list[int] = [64, 128, 256, 512],
+                 kernel_sizes: list[int] = [3, 3, 3, 3],
+                 zdim: int = 128,
+                 nchannels: int = 1,
+                 strides: list[int] = [4, 4, 4, 2],
+                 dilations: list[int] = [1, 3, 9],
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
+                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
+                 lr = 1e-4):
+        super().__init__(block_length,
+                         pqmf,
+                         sample_rate,
+                         nkernels,
+                         kernel_sizes,
+                         zdim,
+                         nchannels,
+                         strides,
+                         dilations,
+                         mel_loss_fn,
+                         full_stft_loss_fn,
+                         mb_stft_loss_fn,
+                         lr)
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+
+        # forward
+
+        y_hat, mu, sigma = self.model(x)
+        y_hat = y_hat[:,:,:batch.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+
+        # losses
+        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
+        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) + self.full_stft_loss_fn(y_hat_AS, y_AS)
+
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
+        reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
+
+        kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+
+        # backprop
+        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
+        loss = reconstruction_loss + beta*kl_div
+
+        self.log("loss", loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        return loss
     
 class PQMFVAE(nn.Module):
     """
