@@ -28,7 +28,7 @@ def main(args):
     gen_model = gan.generator
     dac_model = gan.codec
 
-    block_length_in_samples = gan.block_length_in_samples
+    block_length_in_samples = gan.input_block_length
     model_sr = dac_model.sample_rate
 
     input_waveform = load_mono(input_path, model_sr).to(device)
