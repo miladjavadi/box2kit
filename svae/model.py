@@ -272,6 +272,7 @@ class TransferGAN(LightningVAE):
         self.real_label = 1
         self.fake_label = 0
         self.adversarial_loss_fn = torch.nn.BCELoss()
+        self.warmup = warmup
 
         self.automatic_optimization = False
     
