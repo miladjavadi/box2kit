@@ -339,6 +339,7 @@ class TransferGAN(LightningVAE):
         self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("adv_loss", adversarial_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
 
     def on_train_epoch_start(self):
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
