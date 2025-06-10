@@ -252,12 +252,7 @@ class TransferGAN(LightningVAE):
                  lambda_adversarial: float = 1,
                  warmup: int = 250
                  ):
-        self.discriminator = DiscriminatorV2(discriminator_dims)
-        self.adversarial_phase = False
         self.lambda_adversarial = lambda_adversarial
-        self.real_label = 1
-        self.fake_label = 0
-        self.adversarial_loss_fn = torch.nn.BCELoss()
         super().__init__(block_length,
                          pqmf,
                          sample_rate,
@@ -272,6 +267,12 @@ class TransferGAN(LightningVAE):
                          mb_stft_loss_fn,
                          lr)
         
+        self.discriminator = DiscriminatorV2(discriminator_dims)
+        self.adversarial_phase = False
+        self.real_label = 1
+        self.fake_label = 0
+        self.adversarial_loss_fn = torch.nn.BCELoss()
+
         self.automatic_optimization = False
     
     def training_step(self, batch, batch_idx):
