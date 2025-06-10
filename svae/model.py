@@ -10,6 +10,7 @@ from utils.load_data import load_dir, reshape_data, load_mono
 from svae.rave_pqmf import PQMF
 from audiotools import AudioSignal
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
+from gantransfer.ganmodel import DiscriminatorV2
 import os
 
 class WaveSegmentDataset(torch.utils.data.Dataset):
@@ -112,7 +113,7 @@ class SingleVAE(nn.Module):
 
 class LightningVAE(pl.LightningModule):
     def __init__(self,
-                 block_length,
+                 block_length: int,
                  pqmf: PQMF = PQMF(),
                  sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
@@ -178,7 +179,7 @@ class LightningVAE(pl.LightningModule):
     
 class TransferVAE(LightningVAE):
     def __init__(self,
-                 block_length,
+                 block_length: int,
                  pqmf: PQMF = PQMF(),
                  sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
@@ -231,7 +232,122 @@ class TransferVAE(LightningVAE):
         self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         return loss
+
+class TransferGAN(LightningVAE):
+    def __init__(self,
+                 block_length: int,
+                 discriminator_dims: list[int],
+                 pqmf: PQMF = PQMF(),
+                 sample_rate: int = 48000,
+                 nkernels: list[int] = [64, 128, 256, 512],
+                 kernel_sizes: list[int] = [3, 3, 3, 3],
+                 zdim: int = 128,
+                 nchannels: int = 1,
+                 strides: list[int] = [4, 4, 4, 2],
+                 dilations: list[int] = [1, 3, 9],
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
+                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
+                 lr: float = 1e-4,
+                 lambda_adversarial: float = 1,
+                 warmup: int = 250
+                 ):
+        self.discriminator = DiscriminatorV2(discriminator_dims)
+        self.adversarial_phase = False
+        self.lambda_adversarial = lambda_adversarial
+        self.real_label = 1
+        self.fake_label = 0
+        self.adversarial_loss_fn = torch.nn.BCELoss()
+        super().__init__(block_length,
+                         pqmf,
+                         sample_rate,
+                         nkernels,
+                         kernel_sizes,
+                         zdim,
+                         nchannels,
+                         strides,
+                         dilations,
+                         mel_loss_fn,
+                         full_stft_loss_fn,
+                         mb_stft_loss_fn,
+                         lr)
+        
+        self.automatic_optimization = False
     
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        gen_optimizer, discr_optimizer = self.optimizers()
+
+        # train generator
+        self.toggle_optimizer(gen_optimizer)
+
+        y_hat, mu, sigma = self.model(x)
+        y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+
+        # generator losses
+        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
+        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) + self.full_stft_loss_fn(y_hat_AS, y_AS)
+
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
+        reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
+
+        kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+
+        if self.adversarial_phase:
+            stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
+            gen_score = self.discriminator(stft_gen)
+            real_labels = torch.full_like(gen_score, fill_value=self.real_label)
+            # how convinced the discriminator is that generated waveforms are real
+            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
+
+        else:
+            adversarial_loss = 0
+
+        # backprop
+        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
+        gen_loss = reconstruction_loss + beta*kl_div + self.lambda_adversarial * adversarial_loss
+
+        gen_optimizer.zero_grad()
+        self.manual_backward(gen_loss)
+        gen_optimizer.step()
+        self.untoggle_optimizer(gen_optimizer)
+
+        # train discriminator
+        if self.adversarial_phase:
+            self.toggle_optimizer(discr_optimizer)
+
+            stft_target = stft_target = torch.stft(y.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y.device), return_complex=True).abs()
+            discr_optimizer.zero_grad()
+            # how convinced the discriminator is that target waveforms are real, and generated waveforms are fake
+            real_score = self.discriminator(stft_target)
+            gen_score = self.discriminator(stft_gen.detach())
+
+            real_labels = torch.full_like(real_score, fill_value=self.real_label)
+            fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
+
+            discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
+            self.manual_backward(discr_loss)
+            discr_optimizer.step()
+            self.untoggle_optimizer(discr_optimizer)
+        else:
+            discr_loss = 0
+
+        self.log("d_loss", discr_loss, prog_bar=True, on_step = False, on_epoch=True, logger=True)
+        self.log("g_loss", gen_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+
+    def on_train_epoch_start(self):
+        self.adversarial_phase = True if self.current_epoch >= self.warmup else False
+        return super().on_train_epoch_start()
+    
+    def configure_optimizers(self):
+        gen_optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=self.lr)
+        return [gen_optimizer, discr_optimizer], []
+
+
 class PQMFVAE(nn.Module):
     """
     PQMF-to-waveform VAE model based on IRCAM's RAVE:
