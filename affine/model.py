@@ -194,13 +194,13 @@ class GenerationCallback(Callback):
             torchaudio.save(f"{self.out_dir}/epoch_{epoch}.wav", reconstructed_wave.cpu(), pl_module.sr)
         return super().on_train_epoch_end(trainer, pl_module)
     
-    def on_train_end(self, trainer, pl_module):
+    def on_train_end(self, trainer, pl_module: AffineLightning):
         if self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.sr)]
             test_segs = reshape_data(test_wave, pl_module.input_block_length).to(pl_module.device)
             with torch.inference_mode():
                 test_frames = pl_module.codec.encode(test_segs)[0]
-                reconstructed_wave = torch.cat([pl_module.codec.decode(pl_module(seg.unsqueeze(0))) for seg in test_frames], dim=2).squeeze(0)
+                reconstructed_wave = torch.cat([pl_module.codec.decode(pl_module(seg.unsqueeze(0)))[0] for seg in test_frames], dim=1).squeeze(0)
 
             torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.sr)
         return super().on_train_end(trainer, pl_module)
