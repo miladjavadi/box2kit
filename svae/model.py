@@ -553,7 +553,9 @@ class GenerationCallback(Callback):
         if epoch % self.test_freq == 0 and self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.model.sr)]
             test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
-            reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
+
+            with torch.inference_mode():
+                reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
             torchaudio.save(f"{self.out_dir}/epoch_{epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_epoch_end(trainer, pl_module)
@@ -562,7 +564,9 @@ class GenerationCallback(Callback):
         if self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.model.sr)]
             test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
-            reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
+
+            with torch.inference_mode():
+                reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
             torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
