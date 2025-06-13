@@ -34,7 +34,7 @@ def main(args):
     query_dir = args.query
     target_dir = args.target
 
-    dac_model = DAC.load(dac.utils.download()).to(DEVICE)
+    dac_model = DAC.load(dac.utils.download())
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(TEMPO*SUBDIVS/4))
 
