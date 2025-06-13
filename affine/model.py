@@ -186,7 +186,7 @@ class GenerationCallback(Callback):
         epoch = pl_module.trainer.current_epoch
         if epoch % self.test_freq == 0 and self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.sr)]
-            test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
+            test_segs = reshape_data(test_wave, pl_module.input_block_length).to(pl_module.device)
             with torch.inference_mode():
                 test_frames = pl_module.codec(test_segs)[0]
                 reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0] for seg in test_frames], dim=2).squeeze(0)
@@ -197,7 +197,7 @@ class GenerationCallback(Callback):
     def on_train_end(self, trainer, pl_module):
         if self.output_test:
             test_wave = [load_mono(self.test_file, pl_module.sr)]
-            test_segs = reshape_data(test_wave, pl_module.block_length).to(pl_module.device)
+            test_segs = reshape_data(test_wave, pl_module.input_block_length).to(pl_module.device)
             with torch.inference_mode():
                 test_frames = pl_module.codec(test_segs)[0]
                 reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0] for seg in test_frames], dim=2).squeeze(0)
