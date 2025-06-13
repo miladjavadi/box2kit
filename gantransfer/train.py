@@ -150,6 +150,7 @@ def main(args):
     warmup = args.warmup
     sort_key = args.ckptkey
     descending = not args.asc
+    experiment_name = args.name
     nfft = 1024
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -172,7 +173,7 @@ def main(args):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
-    tblogger = TensorBoardLogger(save_dir="ganv2_logs")
+    tblogger = TensorBoardLogger(save_dir="ganv2_logs", name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger)
 
     # load from previously saved checkpoint, if provided
@@ -198,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--lemb", help="Set importance of embedding loss in generator cost function.", type=float, metavar="lambda", default=1)
     parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
     parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
+    parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
     args=parser.parse_args()
     main(args)
 
