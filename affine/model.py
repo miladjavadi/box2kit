@@ -205,13 +205,13 @@ class GenerationCallback(Callback):
             torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
     
-    def on_train_epoch_start(self):
-        self.codec.eval()
-        self.adversarial_phase = True if self.current_epoch >= self.warmup else False
-        return super().on_train_epoch_start()
+    def on_train_epoch_start(self, trainer, pl_module):
+        pl_module.codec.eval()
+        pl_module.adversarial_phase = True if trainer.current_epoch >= pl_module.warmup else False
+        return super().on_train_epoch_start(trainer, pl_module)
 
-    def on_fit_epoch_start(self):
-        self.codec.eval()
+    # def on_fit_epoch_start(self):
+    #     self.codec.eval()
     
-    def on_validation_epoch_start(self):
-        self.codec.eval()
+    # def on_validation_epoch_start(self):
+    #     self.codec.eval()
