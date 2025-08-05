@@ -13,8 +13,9 @@ def train_val_split(data, split=0.8):
     return data[perm[:split_n]], data[perm[split_n:]]
 
 def safe_encode(data, codec, batch_size=8):
-    latents = [codec.encode(waveform)[0] for waveform in batch_partition(data, batch_size)]
-    latents = torch.cat(latents, dim=0)
+    with torch.inference_mode():
+        latents = [codec.encode(waveform)[0] for waveform in batch_partition(data, batch_size)]
+        latents = torch.cat(latents, dim=0)
     return latents
 
 def main():
