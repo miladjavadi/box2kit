@@ -37,8 +37,8 @@ def main():
 
     train_waveform_data, val_waveform_data = train_val_split(paired_waveform_segs, 0.8)
 
-    train_data = safe_encode(train_waveform_data, dac_model)
-    val_data = safe_encode(val_waveform_data, dac_model)
+    train_data = torch.cat([safe_encode(train_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
+    val_data = torch.cat([safe_encode(val_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
 
     codebook = PairedCodebook(train_data, val_data, 512)
 
