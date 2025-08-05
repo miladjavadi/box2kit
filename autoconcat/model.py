@@ -58,7 +58,7 @@ class PairedCodebook():
         best_quant_error = torch.inf
 
         for candidate in training_data:
-            candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
+            candidate_book = torch.cat((codebook, candidate.unsqueeze(0))).to(training_data.device)
             min_distances = torch.tensor([match_search(validation_point[0], candidate_book[:,0])[0] for validation_point in validation_data]).to(training_data.device)
             quant_error = torch.mean(min_distances)
 
