@@ -30,8 +30,8 @@ def main():
     target_waves = load_dir("training_data/beatbox", model_sr)
     output_waves = load_dir("training_data/drum_kit", model_sr)
 
-    target_waveform_segs = reshape_data(target_waves, seg_length_in_samples)
-    output_waveform_segs = reshape_data(target_waves, seg_length_in_samples)
+    target_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to(device)
+    output_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to(device)
 
     paired_waveform_segs = torch.cat((target_waveform_segs, output_waveform_segs), dim=1) # cat along channel direction
 
