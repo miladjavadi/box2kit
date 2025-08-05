@@ -56,6 +56,7 @@ class PairedCodebook():
         # add codebook segment which minimizes match search quantization error between new codebook and validation data
 
         best_quant_error = torch.inf
+        print(training_data.shape)
 
         for candidate in training_data:
             candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
