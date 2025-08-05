@@ -49,6 +49,7 @@ class PairedCodebook():
     def greedy_codebook(self, training_data, validation_data, codebook_length):
         codebook = torch.empty((0, *training_data[0].shape)).to(training_data.device)
         for i in range(codebook_length):
+            print(codebook.shape)
             codebook = self.greedy_search_step(codebook, training_data, validation_data)
         return codebook
     
@@ -56,7 +57,6 @@ class PairedCodebook():
         # add codebook segment which minimizes match search quantization error between new codebook and validation data
 
         best_quant_error = torch.inf
-        print(training_data.shape)
 
         for candidate in training_data:
             candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
@@ -260,7 +260,6 @@ class AutoConcatenator():
 
 def match_search(input, codebook):
     differences = codebook - input
-    print(input.shape, codebook.shape)
     distances = torch.linalg.norm(differences, axis=(1, 2))
     min_dist, opt_index = torch.min(distances, dim=0)
     return min_dist, opt_index
