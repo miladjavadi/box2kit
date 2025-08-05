@@ -47,7 +47,7 @@ class PairedCodebook():
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
     def greedy_codebook(self, training_data, validation_data, codebook_length):
-        codebook = torch.empty((0, *training_data[0].shape))
+        codebook = torch.empty((0, *training_data[0].shape)).to(training_data.device)
         for i in range(codebook_length):
             codebook = self.greedy_search_step(codebook, training_data, validation_data)
         return codebook
@@ -58,7 +58,7 @@ class PairedCodebook():
         best_quant_error = torch.inf
 
         for candidate in training_data:
-            candidate_book = torch.cat((codebook, candidate.unsqueeze(0))).to(training_data.device)
+            candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
             min_distances = torch.tensor([match_search(validation_point[0], candidate_book[:,0])[0] for validation_point in validation_data]).to(training_data.device)
             quant_error = torch.mean(min_distances)
 
