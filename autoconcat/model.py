@@ -1,84 +1,147 @@
 import numpy as np
 import torch
 from autoconcat.util import batch_partition
+from svae.model import PairedWaveformDataset
 
 class PairedCorpus():
-    def __init__(self, query_blocks, target_blocks, block_length_in_samples):
-        if query_blocks.ndim != 3 or target_blocks.ndim != 3:
+    def __init__(self, target_blocks, output_blocks, block_length_in_samples):
+        if target_blocks.ndim != 3 or output_blocks.ndim != 3:
             raise ValueError("Dataset arrays must be three-dimensional (B x Nq x T).")
     
-        self.query_blocks = query_blocks # B x Nq x T
         self.target_blocks = target_blocks # B x Nq x T
+        self.output_blocks = output_blocks # B x Nq x T
         self.block_length_in_samples = block_length_in_samples
     
-    def append(self, new_query_blocks, new_target_blocks) -> None:
-        if new_query_blocks.shape != new_target_blocks:
-            raise ValueError(f"Paired query block and target block dimensions do not match ({new_query_blocks.shape} and {new_target_blocks.shape}).")
-        
-        try:
-            self.query_blocks = torch.cat((self.query_blocks, new_query_blocks), axis=0)
-        except ValueError:
-            raise ValueError(f"New query blocks must match dimensionality with existing corpus in all dimension except 0 ({self.query_blocks.shape} and {new_query_blocks.shape}).")
+    def append(self, new_target_blocks, new_output_blocks) -> None:
+        if new_target_blocks.shape != new_output_blocks:
+            raise ValueError(f"Paired target block and output block dimensions do not match ({new_target_blocks.shape} and {new_output_blocks.shape}).")
         
         try:
             self.target_blocks = torch.cat((self.target_blocks, new_target_blocks), axis=0)
         except ValueError:
             raise ValueError(f"New target blocks must match dimensionality with existing corpus in all dimension except 0 ({self.target_blocks.shape} and {new_target_blocks.shape}).")
+        
+        try:
+            self.output_blocks = torch.cat((self.output_blocks, new_output_blocks), axis=0)
+        except ValueError:
+            raise ValueError(f"New output blocks must match dimensionality with existing corpus in all dimension except 0 ({self.output_blocks.shape} and {new_output_blocks.shape}).")
     
     @property
     def nblocks(self):
-        return self.query_blocks.shape[0]
+        return self.target_blocks.shape[0]
     
     @property
     def nbooks(self):
-        return self.query_blocks.shape[1]
+        return self.target_blocks.shape[1]
     
     @property
     def block_length(self):
-        return self.query_blocks.shape[2]
+        return self.target_blocks.shape[2]
+
+
+class PairedCodebook():
+    def __init__(self, training_set: PairedWaveformDataset, validation_set: PairedWaveformDataset, codebook_length: int=512):      
+        if codebook_length < len(training_set):
+            self.codebook = self.greedy_codebook(training_set, validation_set, codebook_length)
+        else:
+            raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
+    
+    def greedy_codebook(self, training_data, validation_data, codebook_length):
+        codebook = torch.empty((0, *training_data[0].shape))
+        for i in range(codebook_length):
+            codebook = self.greedy_search_step(codebook, training_data, validation_data)
+        return codebook
+    
+    def greedy_search_step(self, codebook, training_data, validation_data):
+        # add codebook segment which minimizes match search quantization error between new codebook and validation data
+
+        best_quant_error = torch.inf
+
+        for candidate in training_data:
+            candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
+            min_distances = torch.tensor([match_search(validation_point[0], candidate_book[:,0])[0] for validation_point in validation_data])
+            quant_error = torch.mean(min_distances)
+
+            if quant_error < best_quant_error:
+                best_candidate_book = candidate_book
+                best_quant_error = quant_error
+
+        return best_candidate_book
+    
+    def append(self, new_segment):
+        self.codebook = torch.cat(self.codebook, new_segment)
+    
+    def __len__(self):
+        return self.codebook.shape[0]
+    
+    def __getitem__(self, idx):
+        return self.codebook[idx]
+    
+    @property
+    def targets(self):
+        return self.codebook[:,0]
+    
+    @property
+    def outputs(self):
+        return self.codebook[:,1]
+
+class MatchSearchTransfer():
+    def __init__(self, codebook: PairedCodebook):
+        self.codebook = codebook
+    
+    def transfer_sequence(self, target_sequence):
+        output_sequence = torch.stack([self.transfer(target) for target in target_sequence])
+
+        return output_sequence
+    
+    def transfer(self, target):
+        _, opt_index = match_search(target.unsqueeze(0), self.codebook.targets)
+
+        output = self.codebook.outputs[opt_index]
+        return output
 
         
 class AutoConcatenator():
     def __init__(self, corpus: PairedCorpus):
         self.corpus = corpus
 
-    def quantize_transfer(self, input, query_latents, target_latents):
+    def quantize_transfer(self, input, target_latents, output_latents):
 
-        differences = query_latents - input
+        differences = target_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
         opt_index = torch.argmin(distances)
 
-        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), target_latents, dim=1)
         # cosine_norms = torch.mean(cosine_sims, axis=1)
         # opt_index = torch.argmax(cosine_norms)
 
-        # xcorr_sims = torch.stack([self.xcorr_similarity(input, query) for query in query_latents])
+        # xcorr_sims = torch.stack([self.xcorr_similarity(input, target) for target in target_latents])
 
         # opt_index = torch.argmax(xcorr_sims)
 
         # print("xxx")
         # print(opt_index)
         # print(xcorr_sims[opt_index])
-        # print(torch.var_mean(query_latents[opt_index]))
+        # print(torch.var_mean(target_latents[opt_index]))
 
         # print(distances[opt_index])
 
-        output = target_latents[opt_index]
+        output = output_latents[opt_index]
 
         return output
     
-    def knn_transfer(self, input, query_latents, target_latents, k=1):
+    def knn_transfer(self, input, target_latents, output_latents, k=1):
 
         # input = torch.nn.functional.normalize(input, dim=0)
-        # query_latents = torch.nn.functional.normalize(query_latents, dim=1)
+        # target_latents = torch.nn.functional.normalize(target_latents, dim=1)
 
-        differences = query_latents - input
+        differences = target_latents - input
         distances = torch.linalg.norm(differences, axis=(1, 2))
         k_opt_dist, k_opt_ind = torch.topk(-distances, k)
         normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
         print(normalized_dist_score)
 
-        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), query_latents, dim=1)
+        # cosine_sims = torch.nn.functional.cosine_similarity(input.unsqueeze(0), target_latents, dim=1)
         # cosine_norms = torch.mean(cosine_sims, axis=1)
         # k_opt_dist, k_opt_ind = torch.topk(cosine_norms, k)
         # # normalized_dist_score = torch.nn.functional.softmax(k_opt_dist, dim=0)
@@ -87,20 +150,20 @@ class AutoConcatenator():
         # normalized_dist_score = (1/distances)/torch.sum((1/k_opt_dist))
         # normalized_dist_score = torch.ones_like(k_opt_dist)/k
 
-        transformed_components = [normalized_dist_score[i]*target_latents[j] for i, j in enumerate(k_opt_ind)]
+        transformed_components = [normalized_dist_score[i]*output_latents[j] for i, j in enumerate(k_opt_ind)]
 
         approximated_transform = torch.sum(torch.stack(transformed_components), dim=0)
 
-        quantized_transform = self.quantize_transfer(approximated_transform, target_latents, target_latents)
+        quantized_transform = self.quantize_transfer(approximated_transform, output_latents, output_latents)
         # quantized_transform = approximated_transform
 
         return quantized_transform
 
     
-    def salt(self, input, query_latents, target_latents, max_steps=1, tolerance=1e-3):
+    def salt(self, input, target_latents, output_latents, max_steps=1, tolerance=1e-3):
 
-        scaled_query_corpus = 1/max_steps * query_latents
         scaled_target_corpus = 1/max_steps * target_latents
+        scaled_output_corpus = 1/max_steps * output_latents
 
         residual = input
         transformed_block = torch.zeros(input.shape, device=input.device)
@@ -109,15 +172,15 @@ class AutoConcatenator():
             if torch.linalg.norm(residual) < tolerance:
                 break
 
-            differences = scaled_query_corpus - residual
+            differences = scaled_target_corpus - residual
             distances = torch.linalg.norm(differences, axis=(1, 2))
             min_index = torch.argmin(distances)
 
-            best_fit_query = scaled_query_corpus[min_index]
             best_fit_target = scaled_target_corpus[min_index]
+            best_fit_output = scaled_output_corpus[min_index]
 
-            transformed_block = transformed_block + best_fit_target
-            residual = residual - best_fit_query
+            transformed_block = transformed_block + best_fit_output
+            residual = residual - best_fit_target
 
         return transformed_block
     
@@ -135,9 +198,9 @@ class AutoConcatenator():
         return xcorr_sim
     
     def autoconcat(self, input_waveform, codec, batch_size: int = 64, max_steps: int = 1, tolerance: float = 1e-3, noise=0, k=1):
-        # input query waveform -> reconstructed target waveform
-        query_latents = self.query_latents(codec, noise)
-        target_latents = self.target_latents(codec)
+        # input target waveform -> reconstructed output waveform
+        target_latents = self.target_latents(codec, noise)
+        output_latents = self.output_latents(codec)
 
         # trim waveform to whole number of block lengths
         input_waveform = input_waveform[:,:((input_waveform.shape[1]//self.corpus.block_length_in_samples)*self.corpus.block_length_in_samples)]
@@ -154,9 +217,9 @@ class AutoConcatenator():
             transformed_embeddings = torch.empty((0, input_embeddings.shape[1], self.block_length), device=input_waveform.device)
 
             for block in input_embeddings:
-                # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, query_latents, target_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
-                # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, query_latents, target_latents).unsqueeze(0)), dim=0)
-                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, query_latents, target_latents, k).unsqueeze(0)), dim=0)
+                # transformed_embeddings = torch.cat((transformed_embeddings, self.salt(block, target_latents, output_latents, max_steps, tolerance).unsqueeze(0)), dim=0)
+                # transformed_embeddings = torch.cat((transformed_embeddings, self.quantize_transfer(block, target_latents, output_latents).unsqueeze(0)), dim=0)
+                transformed_embeddings = torch.cat((transformed_embeddings, self.knn_transfer(block, target_latents, output_latents, k).unsqueeze(0)), dim=0)
 
             batched_transformed_embeddings = batch_partition(transformed_embeddings, batch_size)
             batched_reconstruction = [codec.decode(batch) for batch in batched_transformed_embeddings]
@@ -166,13 +229,13 @@ class AutoConcatenator():
 
         return reconstructed_waveform
     
-    def query_latents(self, codec, noise = 0):
-        latents = self.code_to_latents(self.corpus.query_blocks, codec)
+    def target_latents(self, codec, noise = 0):
+        latents = self.code_to_latents(self.corpus.target_blocks, codec)
         latents = latents + noise*torch.randn_like(latents)
         return latents
     
-    def target_latents(self, codec):
-        latents = self.code_to_latents(self.corpus.target_blocks, codec)
+    def output_latents(self, codec):
+        latents = self.code_to_latents(self.corpus.output_blocks, codec)
         return latents
     
     def code_to_latents(self, codes, codec, batch_size: int = 64):
@@ -193,3 +256,9 @@ class AutoConcatenator():
     @property
     def block_length(self):
         return self.corpus.block_length
+
+def match_search(input, codebook):
+    differences = codebook - input
+    distances = torch.linalg.norm(differences, axis=(1, 2))
+    min_dist, opt_index = torch.min(distances, dim=0)
+    return min_dist, opt_index
