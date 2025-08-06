@@ -300,7 +300,7 @@ def match_search(input, codebook):
     print("differences:", differences.shape)
     distances = torch.linalg.norm(differences, axis=(-2, -1))
     print("distances:", distances.shape)
-    min_dist, opt_index = torch.min(distances, dim=-3)
+    min_dist, opt_index = torch.min(distances, dim=-1)
     print("min_dist:", min_dist.shape)
     return min_dist, opt_index
 
