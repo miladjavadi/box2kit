@@ -55,19 +55,48 @@ class PairedCodebook():
     
     def greedy_search_step(self, codebook, training_data, validation_data):
         # add codebook segment which minimizes match search quantization error between new codebook and validation data
+        # tests candidates in batches for increased efficiency :)
 
-        best_quant_error = torch.inf
+        best_score = torch.inf
 
-        for candidate in training_data:
-            candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
-            min_distances = torch.tensor([match_search(validation_point[0], candidate_book[:,0])[0] for validation_point in validation_data]).to(training_data.device)
-            quant_error = torch.mean(min_distances)
+        candidate_batches = batch_partition(training_data, 64)
 
-            if quant_error < best_quant_error:
-                best_candidate_book = candidate_book
-                best_quant_error = quant_error
+        for batch in candidate_batches:
+            candidate_codebook_batch = self.create_candidate_codebook_batch(batch, codebook)
+            best_score_in_batch, best_candidate_book_in_batch = self.batch_greedy_search(candidate_codebook_batch, validation_data)
+
+            if best_score_in_batch < best_score:
+                best_candidate_book = best_candidate_book_in_batch
+                best_score = best_score_in_batch
+
+        # for candidate in training_data:
+        #     candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
+        #     min_distances = torch.tensor([match_search(validation_point[0], candidate_book[:,0])[0] for validation_point in validation_data]).to(training_data.device)
+        #     quant_error = torch.mean(min_distances)
+
+        #     if quant_error < best_quant_error:
+        #         best_candidate_book = candidate_book
+        #         best_quant_error = quant_error
 
         return best_candidate_book
+    
+    def create_candidate_codebook_batch(self, candidate_batch: torch.Tensor, codebook: torch.Tensor):
+        # candidate_codebook_batch: [Candidate, Codeword, Target/Output, DAC features, Frame index]
+
+        batch_size = candidate_batch.shape[0]
+        expanded_codebook = codebook.unsqueeze(0).expand(batch_size, -1, -1, -1, -1).clone()
+        candidate_codebook_batch = torch.stack((expanded_codebook, candidate_batch.unsqueeze(1)))
+        return candidate_codebook_batch
+
+    def batch_greedy_search(candidate_codebook_batch: torch.Tensor, validation_data):
+        # returns best codebook candidate and associated score on validation data
+
+        min_distances = torch.stack([match_search(validation_point[0], candidate_codebook_batch[:,:,0])[0] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
+        quant_errors = torch.mean(min_distances, dim=1) # [Candidate]
+
+        best_score, best_codebook_index = torch.min(quant_errors, dim=0)
+
+        return best_score, candidate_codebook_batch[best_codebook_index]
     
     def append(self, new_segment):
         self.codebook = torch.cat(self.codebook, new_segment)
@@ -260,6 +289,6 @@ class AutoConcatenator():
 
 def match_search(input, codebook):
     differences = codebook - input
-    distances = torch.linalg.norm(differences, axis=(1, 2))
+    distances = torch.linalg.norm(differences, axis=(-2, -1))
     min_dist, opt_index = torch.min(distances, dim=0)
     return min_dist, opt_index
