@@ -68,6 +68,7 @@ class PairedCodebook():
             if best_score_in_batch < best_score:
                 best_candidate_book = best_candidate_book_in_batch
                 best_score = best_score_in_batch
+                print("new best!")
 
         # for candidate in training_data:
         #     candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
@@ -97,14 +98,6 @@ class PairedCodebook():
         quant_errors = torch.mean(min_distances, dim=1) # [Candidate]
 
         best_score, best_codebook_index = torch.min(quant_errors, dim=0)
-
-        print("best score:", best_score)
-
-        print("#####")
-        print(candidate_codebook_batch.shape)
-        print(min_distances.shape)
-        print(quant_errors.shape)
-        print(best_score.shape)
 
         return best_score, candidate_codebook_batch[best_codebook_index]
     
@@ -299,9 +292,6 @@ class AutoConcatenator():
 
 def match_search(input, codebook):
     differences = codebook - input
-    print("differences:", differences.shape)
     distances = torch.linalg.norm(differences, axis=(-2, -1))
-    print("distances:", distances.shape)
     min_dist, opt_index = torch.min(distances, dim=-1)
-    print("min_dist:", min_dist.shape)
     return min_dist, opt_index
