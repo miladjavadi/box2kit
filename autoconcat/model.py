@@ -42,7 +42,8 @@ class PairedCorpus():
 class PairedCodebook():
     def __init__(self, training_set: PairedWaveformDataset, validation_set: PairedWaveformDataset, codebook_length: int=512):      
         if codebook_length < len(training_set):
-            self.codebook = self.greedy_codebook(training_set, validation_set, codebook_length)
+            with torch.no_grad():
+                self.codebook = self.greedy_codebook(training_set, validation_set, codebook_length)
         else:
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
