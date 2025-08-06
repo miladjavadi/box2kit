@@ -85,7 +85,7 @@ class PairedCodebook():
 
         batch_size = candidate_batch.shape[0]
         expanded_codebook = codebook.unsqueeze(0).expand(batch_size, -1, -1, -1, -1).clone()
-        candidate_codebook_batch = torch.stack((expanded_codebook, candidate_batch.unsqueeze(1)))
+        candidate_codebook_batch = torch.cat((expanded_codebook, candidate_batch.unsqueeze(1)), dim=1)
         return candidate_codebook_batch
 
     def batch_greedy_search(candidate_codebook_batch: torch.Tensor, validation_data):
