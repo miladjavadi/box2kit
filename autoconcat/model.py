@@ -127,7 +127,7 @@ class MatchSearchTransfer():
     
     def transfer_sequence(self, target_sequence):
         with torch.no_grad():
-            output_sequence = torch.stack([self.transfer(target) for target in target_sequence])
+            output_sequence = torch.stack([self.transfer(target) for target in target_sequence], dim=0)
 
         return output_sequence
     
