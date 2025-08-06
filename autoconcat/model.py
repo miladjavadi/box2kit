@@ -69,9 +69,8 @@ class PairedCodebook():
             if best_score_in_batch < best_score:
                 best_candidate_book = best_candidate_book_in_batch
                 best_score = best_score_in_batch
-                print("new best!")
             else:
-                print("no new best :(")
+                pass
 
         # for candidate in training_data:
         #     candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
