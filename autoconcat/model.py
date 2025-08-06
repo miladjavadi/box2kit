@@ -88,7 +88,7 @@ class PairedCodebook():
         candidate_codebook_batch = torch.cat((expanded_codebook, candidate_batch.unsqueeze(1)), dim=1)
         return candidate_codebook_batch
 
-    def batch_greedy_search(candidate_codebook_batch: torch.Tensor, validation_data):
+    def batch_greedy_search(self, candidate_codebook_batch: torch.Tensor, validation_data):
         # returns best codebook candidate and associated score on validation data
 
         min_distances = torch.stack([match_search(validation_point[0], candidate_codebook_batch[:,:,0])[0] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
