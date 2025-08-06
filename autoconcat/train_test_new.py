@@ -47,7 +47,7 @@ def main():
     train_data = torch.stack([safe_encode(train_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
     val_data = torch.stack([safe_encode(val_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
 
-    codebook = PairedCodebook(train_data, val_data, 4)
+    codebook = PairedCodebook(train_data, val_data, 16)
 
     print(codebook.codebook.shape)
     gen_model = MatchSearchTransfer(codebook)
