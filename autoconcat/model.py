@@ -299,4 +299,7 @@ def match_search(input, codebook):
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
     min_dist, opt_index = torch.min(distances, dim=0)
+    print("aaaaaaaa", min_dist.shape)
     return min_dist, opt_index
+
+# input: [candidate (identical), ]
