@@ -96,6 +96,12 @@ class PairedCodebook():
 
         best_score, best_codebook_index = torch.min(quant_errors, dim=0)
 
+        print("#####")
+        print(candidate_codebook_batch.shape)
+        print(min_distances.shape)
+        print(quant_errors.shape)
+        print(best_score.shape)
+
         return best_score, candidate_codebook_batch[best_codebook_index]
     
     def append(self, new_segment):
