@@ -64,6 +64,8 @@ def main():
 
     print(output_wave.shape)
 
+    torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
+
     
 
 if __name__ == "__main__":
