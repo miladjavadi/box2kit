@@ -93,7 +93,7 @@ class PairedCodebook():
 
         batch_size = candidate_codebook_batch.shape[0]
 
-        min_distances = torch.stack([match_search(validation_point[0].unsqueeze(0).expand(batch_size, -1, -1, -1), candidate_codebook_batch[:,:,0])[2] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
+        min_distances = torch.stack([match_search(validation_point[0].unsqueeze(0).expand(batch_size, -1, -1, -1), candidate_codebook_batch[:,:,0])[0] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
         quant_errors = torch.mean(min_distances, dim=1) # [Candidate]
 
         best_score, best_codebook_index = torch.min(quant_errors, dim=0)
