@@ -126,7 +126,8 @@ class MatchSearchTransfer():
         self.codebook = codebook
     
     def transfer_sequence(self, target_sequence):
-        output_sequence = torch.stack([self.transfer(target) for target in target_sequence])
+        with torch.no_grad():
+            output_sequence = torch.stack([self.transfer(target) for target in target_sequence])
 
         return output_sequence
     
