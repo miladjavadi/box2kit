@@ -34,8 +34,11 @@ def main():
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    target_waves = load_dir("training_data/beatbox", model_sr)
-    output_waves = load_dir("training_data/drum_kit", model_sr)
+    # target_waves = load_dir("training_data/beatbox", model_sr)
+    # output_waves = load_dir("training_data/drum_kit", model_sr)
+
+    target_waves = load_dir("smackdown/808", model_sr)
+    output_waves = load_dir("smackdown/dk", model_sr)
 
     target_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to(device)
     output_waveform_segs = reshape_data(output_waves, seg_length_in_samples).to(device)

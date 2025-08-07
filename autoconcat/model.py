@@ -47,7 +47,7 @@ class PairedCodebook():
         else:
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
-    def greedy_codebook(self, training_data, validation_data, codebook_length, batch_size = 64):
+    def greedy_codebook(self, training_data, validation_data, codebook_length, batch_size = 32):
         codeword_indices = []
 
         point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
