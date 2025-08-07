@@ -14,7 +14,7 @@ def train_val_split(data, split=0.8):
 
 def safe_encode(data, codec, batch_size=8):
     with torch.inference_mode():
-        latents = [codec.encode(waveform.to(codec.device))[0].to("cpu") for waveform in batch_partition(data, batch_size)]
+        latents = [codec.encode(waveform)[0] for waveform in batch_partition(data, batch_size)]
         latents = torch.cat(latents, dim=0)
     return latents
 
@@ -34,14 +34,14 @@ def main():
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    # target_waves = load_dir("training_data/beatbox", model_sr)
-    # output_waves = load_dir("training_data/drum_kit", model_sr)
+    target_waves = load_dir("training_data/beatbox", model_sr)
+    output_waves = load_dir("training_data/drum_kit", model_sr)
 
-    target_waves = load_dir("smackdown/808", model_sr)
-    output_waves = load_dir("smackdown/dk", model_sr)
+    # target_waves = load_dir("smackdown/808", model_sr)
+    # output_waves = load_dir("smackdown/dk", model_sr)
 
-    target_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to("cpu")
-    output_waveform_segs = reshape_data(output_waves, seg_length_in_samples).to("cpu")
+    target_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to(device)
+    output_waveform_segs = reshape_data(output_waves, seg_length_in_samples).to(device)
 
     paired_waveform_segs = torch.cat((target_waveform_segs, output_waveform_segs), dim=1) # cat along channel direction
 
@@ -55,8 +55,8 @@ def main():
     print(codebook.codebook.shape)
     gen_model = MatchSearchTransfer(codebook)
 
-    # test_wave_segs = reshape_data([load_mono("16.wav", model_sr)], seg_length_in_samples).to(device)
-    test_wave_segs = reshape_data([load_mono("tester.wav", model_sr)], seg_length_in_samples).to(device)
+    test_wave_segs = reshape_data([load_mono("16.wav", model_sr)], seg_length_in_samples).to(device)
+    # test_wave_segs = reshape_data([load_mono("tester.wav", model_sr)], seg_length_in_samples).to(device)
 
     test_latents = safe_encode(test_wave_segs, dac_model)
 
@@ -73,8 +73,8 @@ def main():
 
     print(output_wave.shape)
 
-    # torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
-    torchaudio.save("outs/chaos/owie.wav", output_wave.detach().cpu(), model_sr)
+    torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
+    # torchaudio.save("outs/chaos/owie.wav", output_wave.detach().cpu(), model_sr)
 
     
 

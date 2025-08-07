@@ -32,3 +32,24 @@ def reshape_data(waveforms: list[torch.FloatTensor], block_length: int) -> torch
         dataset = torch.cat((dataset, blocks), dim=0)
     
     return dataset
+
+def binary_split(data, split=0.8):
+    n = data.size(0)
+    perm = torch.randperm(n)
+    split_n = int(n * split)
+    return data[perm[:split_n]], data[perm[split_n:]]
+
+def safe_encode(data, codec, batch_size=8):
+    with torch.inference_mode():
+        latents = [codec.encode(waveform)[0] for waveform in batch_partition(data, batch_size)]
+        latents = torch.cat(latents, dim=0)
+    return latents
+
+def safe_decode(data, codec, batch_size=8):
+    with torch.inference_mode():
+        latents = [codec.decode(latent) for latent in batch_partition(data, batch_size)]
+        latents = torch.cat(latents, dim=0)
+    return latents
+
+def batch_partition(dataset, batch_size: int = 64):
+    return [dataset[i:i+batch_size] for i in range(0, dataset.shape[0], batch_size)]
