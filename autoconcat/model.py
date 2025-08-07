@@ -48,13 +48,13 @@ class PairedCodebook():
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
     def greedy_codebook(self, training_data, validation_data, codebook_length, batch_size = 64):
-        codeword_indices = torch.empty(0, dtype=torch.int).to(training_data.device)
+        codeword_indices = []
 
         point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
         for i in range(codebook_length):
             print(i)
             new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
-            codeword_indices = torch.cat((codeword_indices, new_codeword_index))
+            codeword_indices.append(new_codeword_index)
 
         codebook = training_data[codeword_indices]
         return codebook
