@@ -146,6 +146,7 @@ class PairedCodebook():
         Outputs:
         - distances ([training pt., validation pt.]): Distances between training point-validation point pairs
         """
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         distances = []
 
         # calc distances in batches to reduce memory usage
@@ -153,8 +154,8 @@ class PairedCodebook():
             print("batch", i)
             start = i
             stop = i + batch_size
-            differences = training_data[start:stop,0,:,:].unsqueeze(1) - validation_data[:,0,:,:].unsqueeze(0)
-            distances.append(torch.linalg.norm(differences, axis=(-1, -2)))
+            differences = training_data[start:stop,0,:,:].unsqueeze(1).to(device) - validation_data[:,0,:,:].unsqueeze(0).to(device)
+            distances.append(torch.linalg.norm(differences, axis=(-1, -2)).to("cpu"))
 
         distances = torch.cat(distances)
         return distances
