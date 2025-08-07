@@ -27,7 +27,7 @@ def safe_decode(data, codec, batch_size=8):
 def main():
 
     tempo = 90
-    subdivs = 16
+    subdivs = 8
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
@@ -47,7 +47,7 @@ def main():
     train_data = torch.stack([safe_encode(train_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
     val_data = torch.stack([safe_encode(val_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
 
-    codebook = PairedCodebook(train_data, val_data, 256)
+    codebook = PairedCodebook(train_data, val_data, 512)
 
     print(codebook.codebook.shape)
     gen_model = MatchSearchTransfer(codebook)
