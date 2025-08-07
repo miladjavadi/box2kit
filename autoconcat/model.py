@@ -106,11 +106,9 @@ class PairedCodebook():
         # return candidate_codebook_batch
 
         n_candidates = candidate_distances.shape[0]
-        expanded_codebook = torch.cat((codebook_distances, torch.ones(1, codebook_distances.shape[1], device=codebook_distances.device))).unsqueeze(0).expand(n_candidates, -1, -1)
-        mask = torch.ones(expanded_codebook.shape, dtype=torch.bool).to(expanded_codebook.device)
-        mask = torch.cat((mask, torch.zeros(n_candidates, 1, expanded_codebook.shape[2], dtype=torch.bool, device=mask.device)), dim=0)
+        expanded_codebook = codebook_distances.unsqueeze(0).expand(n_candidates, -1, -1)
 
-        codebook_candidate_distances = torch.where(mask, expanded_codebook, candidate_distances.unsqueeze(1))
+        codebook_candidate_distances = torch.cat((expanded_codebook, candidate_distances.unsqueeze(1)), dim=1)
 
         return codebook_candidate_distances
 
