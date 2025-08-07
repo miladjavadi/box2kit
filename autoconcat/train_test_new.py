@@ -34,11 +34,11 @@ def main():
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    # target_waves = load_dir("training_data/beatbox", model_sr)
-    # output_waves = load_dir("training_data/drum_kit", model_sr)
+    target_waves = load_dir("training_data/beatbox", model_sr)
+    output_waves = load_dir("training_data/drum_kit", model_sr)
 
-    target_waves = load_dir("smackdown/808", model_sr)
-    output_waves = load_dir("smackdown/dk", model_sr)
+    # target_waves = load_dir("smackdown/808", model_sr)
+    # output_waves = load_dir("smackdown/dk", model_sr)
 
     target_waveform_segs = reshape_data(target_waves, seg_length_in_samples).to(device)
     output_waveform_segs = reshape_data(output_waves, seg_length_in_samples).to(device)
@@ -55,7 +55,7 @@ def main():
     print(codebook.codebook.shape)
     gen_model = MatchSearchTransfer(codebook)
 
-    test_wave_segs = reshape_data([load_mono("tester.wav", model_sr)], seg_length_in_samples).to(device)
+    test_wave_segs = reshape_data([load_mono("16.wav", model_sr)], seg_length_in_samples).to(device)
 
     test_latents = safe_encode(test_wave_segs, dac_model)
 
@@ -63,12 +63,17 @@ def main():
 
     transformed_test_wave_segs = safe_decode(transformed_test_latents, dac_model)
 
+    output_codewords = safe_decode(gen_model.codebook.outputs, dac_model)
+    codebook_wave = output_codewords.reshape(1, -1)
+
+    torchaudio.save("outs/chaos/codebook.wav")
+
     output_wave = transformed_test_wave_segs.permute(1, 0, 2).reshape(transformed_test_wave_segs.shape[1], -1)
 
     print(output_wave.shape)
 
-    # torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
-    torchaudio.save("outs/chaos/owie.wav", output_wave.detach().cpu(), model_sr)
+    torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
+    # torchaudio.save("outs/chaos/owie.wav", output_wave.detach().cpu(), model_sr)
 
     
 
