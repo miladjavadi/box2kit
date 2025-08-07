@@ -48,29 +48,36 @@ class PairedCodebook():
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
     def greedy_codebook(self, training_data, validation_data, codebook_length):
-        codebook = torch.empty((0, *training_data[0].shape)).to(training_data.device)
+        codeword_indices = torch.empty(codebook_length, dtype=torch.int).to(training_data.device)
+
+        point_pair_distances = self.point_pair_distance_array(training_data, validation_data)
         for i in range(codebook_length):
-            print(codebook.shape)
-            codebook = self.greedy_search_step(codebook, training_data, validation_data)
+            print(codeword_indices.shape)
+            new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
+            codeword_indices[i] = new_codeword_index
+
+        codebook = training_data[codeword_indices]
         return codebook
     
-    def greedy_search_step(self, codebook, training_data, validation_data):
-        # add codebook segment which minimizes match search quantization error between new codebook and validation data
-        # tests candidates in batches for increased efficiency :)
+    def greedy_search_step(self, codeword_indices, point_pair_distances):
+        """
+        return codeword index which minimizes match search quantization error between new codebook and validation data.
+        tests candidates in batches for increased efficiency :)
+
+        Parameters:
+        - codeword_indices: List of indices in current codebook
+        - point_pair_distances: Distances between all codeword candidate-validation point pairs
+
+        Outputs:
+        - best_index: Index of best performing codeword candidate
+        """
 
         best_score = torch.inf
 
-        candidate_batches = batch_partition(training_data, 64)
+        codebook_distances = point_pair_distances[codeword_indices]
 
-        for batch in candidate_batches:
-            candidate_codebook_batch = self.create_candidate_codebook_batch(batch, codebook)
-            best_score_in_batch, best_candidate_book_in_batch = self.batch_greedy_search(candidate_codebook_batch, validation_data)
-
-            if best_score_in_batch < best_score:
-                best_candidate_book = best_candidate_book_in_batch
-                best_score = best_score_in_batch
-            else:
-                pass
+        codebook_candidate_distances = self.create_codebook_candidates(point_pair_distances, codebook_distances)
+        _, best_index = self.batch_greedy_search(codebook_candidate_distances)
 
         # for candidate in training_data:
         #     candidate_book = torch.cat((codebook, candidate.unsqueeze(0)))
@@ -81,27 +88,70 @@ class PairedCodebook():
         #         best_candidate_book = candidate_book
         #         best_quant_error = quant_error
 
-        return best_candidate_book
+        return best_index
     
-    def create_candidate_codebook_batch(self, candidate_batch: torch.Tensor, codebook: torch.Tensor):
-        # candidate_codebook_batch: [Candidate, Codeword, Target/Output, DAC features, Frame index]
+    def create_codebook_candidates(self, candidate_distances: torch.Tensor, codebook_distances: torch.Tensor) -> torch.Tensor:
+        """
+        Parameters:
+        - candidate_distances ([candidate, validation point]): Distances between candidate-validation point pairs.
+        - codebook_distances ([codeword, validation point]): Distances between codeword-validation point pairs.
 
-        batch_size = candidate_batch.shape[0]
-        expanded_codebook = codebook.unsqueeze(0).expand(batch_size, -1, -1, -1, -1).clone()
-        candidate_codebook_batch = torch.cat((expanded_codebook, candidate_batch.unsqueeze(1)), dim=1)
-        return candidate_codebook_batch
+        Outputs:
+        - codebook_candidate_distances ([codebook candidate, codeword, validation point]): All codebook candidates' codeword-validation distance pairs.
+        """
 
-    def batch_greedy_search(self, candidate_codebook_batch: torch.Tensor, validation_data):
-        # returns best codebook candidate and associated score on validation data
+        # batch_size = candidate_batch_distances.shape[0]
+        # expanded_codebook = codebook_distances.unsqueeze(0).expand(batch_size, -1, -1).clone()
+        # candidate_codebook_batch = torch.cat((expanded_codebook, candidate_batch_distances.unsqueeze(1)), dim=1)
+        # return candidate_codebook_batch
 
-        batch_size = candidate_codebook_batch.shape[0]
+        n_candidates = candidate_distances.shape[0]
+        expanded_codebook = codebook_distances.unsqueeze(0).expand(n_candidates, -1, -1)
+        mask = torch.ones(expanded_codebook.shape, dtype=torch.bool).to(expanded_codebook.device)
+        mask = torch.cat((mask, torch.zeros(n_candidates, 1, expanded_codebook.shape[2], dtype=torch.bool, device=mask.device)), dim=0)
 
-        min_distances = torch.stack([match_search(validation_point[0].unsqueeze(0).expand(batch_size, -1, -1, -1), candidate_codebook_batch[:,:,0])[0] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
-        quant_errors = torch.mean(min_distances, dim=1) # [Candidate]
+        codebook_candidate_distances = torch.where(mask, expanded_codebook, candidate_distances.unsqueeze(1))
 
-        best_score, best_codebook_index = torch.min(quant_errors, dim=0)
+        return codebook_candidate_distances
 
-        return best_score, candidate_codebook_batch[best_codebook_index]
+    def batch_greedy_search(self, codebook_candidate_distances: torch.Tensor) -> tuple[float, int]:
+        """
+        Parameters:
+        - codebook_candidate_distances ([codebook candidate, codeword, validation point]): All codebook candidates' codeword-validation distance pairs.
+
+        Outputs:
+        - best_score: Mean quantization error of best codebook candidate on validation data
+        - best_codebook_index: Batch-relative index of best codebook candidate
+        """
+
+        # batch_size = candidate_codebook_batch.shape[0]
+
+        # min_distances = torch.stack([match_search(validation_point[0].unsqueeze(0).expand(batch_size, -1, -1, -1), candidate_codebook_batch[:,:,0])[0] for validation_point in validation_data], dim=1) # [Candidate, Val. Point]
+        # quant_errors = torch.mean(min_distances, dim=1) # [Candidate]
+
+        # best_score, best_codebook_index = torch.min(quant_errors, dim=0)
+
+        # return best_score, candidate_codebook_batch[best_codebook_index]
+
+        min_distances, _ = torch.min(codebook_candidate_distances, dim=1)
+        scores = torch.mean(min_distances, dim=1)
+        best_score, best_codebook_index  = torch.min(scores, dim=0)
+
+        return best_score, best_codebook_index
+    
+    def point_pair_distance_array(self, training_data, validation_data):
+        """
+        Parameters:
+        - training_data ([training pt., dac feat., frame idx.]): Training dataset/codeword candidate set
+        - validation_data ([validation pt., dac feat., frame idx.]): Validation set
+
+        Outputs:
+        - distances ([training pt., validation pt.]): Distances between training point-validation point pairs
+        """
+        differences = training_data.unsqueeze(1).expand(-1, validation_data.shape[0], -1, -1) - validation_data
+        distances = torch.linalg.norm(differences, axis=(-1, -2))
+
+        return distances
     
     def append(self, new_segment):
         self.codebook = torch.cat(self.codebook, new_segment)
@@ -293,8 +343,9 @@ class AutoConcatenator():
     def block_length(self):
         return self.corpus.block_length
 
-def match_search(input, codebook):
+def match_search(input, codebook = None, distances = None):
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
+
     min_dist, opt_index = torch.min(distances, dim=-1)
     return min_dist, opt_index
