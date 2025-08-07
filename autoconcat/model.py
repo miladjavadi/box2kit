@@ -151,8 +151,8 @@ class PairedCodebook():
         # calc distances in batches to reduce memory usage
         for i in range(0, training_data.shape[0], batch_size):
             print("batch", i)
-            start = i*batch_size
-            stop = (i+1)*batch_size
+            start = i
+            stop = i + batch_size
             differences = training_data[start:stop,0,:,:].unsqueeze(1) - validation_data[:,0,:,:].unsqueeze(0)
             distances.append(torch.linalg.norm(differences, axis=(-1, -2)))
 
