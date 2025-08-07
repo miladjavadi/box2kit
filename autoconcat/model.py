@@ -74,7 +74,7 @@ class PairedCodebook():
 
         best_score = torch.inf
 
-        codebook_distances = point_pair_distances[codeword_indices,:,:]
+        codebook_distances = point_pair_distances[codeword_indices,:]
 
         codebook_candidate_distances = self.create_codebook_candidates(point_pair_distances, codebook_distances)
         _, best_index = self.batch_greedy_search(codebook_candidate_distances)
