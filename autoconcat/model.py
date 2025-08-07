@@ -40,7 +40,7 @@ class PairedCorpus():
 
 
 class PairedCodebook():
-    def __init__(self, training_set: PairedWaveformDataset, validation_set: PairedWaveformDataset, codebook_length: int=1024):      
+    def __init__(self, training_set: PairedWaveformDataset, validation_set: PairedWaveformDataset, codebook_length: int=512):      
         if codebook_length < len(training_set):
             with torch.no_grad():
                 self.codebook = self.greedy_codebook(training_set, validation_set, codebook_length)
@@ -52,7 +52,7 @@ class PairedCodebook():
 
         point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
         for i in range(codebook_length):
-            print(len(codeword_indices))
+            print("words", len(codeword_indices))
             new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
             codeword_indices.append(new_codeword_index)
 
@@ -106,7 +106,6 @@ class PairedCodebook():
         # return candidate_codebook_batch
 
         n_candidates = candidate_distances.shape[0]
-        print(codebook_distances.shape)
         expanded_codebook = codebook_distances.unsqueeze(0).expand(n_candidates, -1, -1)
 
         codebook_candidate_distances = torch.cat((expanded_codebook, candidate_distances.unsqueeze(1)), dim=1)
@@ -151,6 +150,7 @@ class PairedCodebook():
 
         # calc distances in batches to reduce memory usage
         for i in range(0, training_data.shape[0], batch_size):
+            print("batch", i)
             start = i*batch_size
             stop = (i+1)*batch_size
             differences = training_data[start:stop,0,:,:].unsqueeze(1) - validation_data[:,0,:,:].unsqueeze(0)
