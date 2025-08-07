@@ -47,10 +47,10 @@ class PairedCodebook():
         else:
             raise ValueError(f"Desired codebook length exceeds number of training points ({codebook_length} > {len(training_set)}).")
     
-    def greedy_codebook(self, training_data, validation_data, codebook_length):
+    def greedy_codebook(self, training_data, validation_data, codebook_length, batch_size = 64):
         codeword_indices = torch.empty(codebook_length, dtype=torch.int).to(training_data.device)
 
-        point_pair_distances = self.point_pair_distance_array(training_data, validation_data)
+        point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
         for i in range(codebook_length):
             print(codeword_indices.shape)
             new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
@@ -139,7 +139,7 @@ class PairedCodebook():
 
         return best_score, best_codebook_index
     
-    def point_pair_distance_array(self, training_data, validation_data):
+    def point_pair_distance_array(self, training_data, validation_data, batch_size):
         """
         Parameters:
         - training_data ([training pt., domain, dac feat., frame idx.]): Training dataset/codeword candidate set
@@ -148,9 +148,16 @@ class PairedCodebook():
         Outputs:
         - distances ([training pt., validation pt.]): Distances between training point-validation point pairs
         """
-        differences = training_data[:,0,:,:].unsqueeze(1).expand(-1, validation_data.shape[0], -1, -1) - validation_data[:,0,:,:]
-        distances = torch.linalg.norm(differences, axis=(-1, -2))
+        distances = []
 
+        # calc distances in batches to reduce memory usage
+        for i in range(0, training_data.shape[0], batch_size):
+            start = i*batch_size
+            stop = (i+1)*batch_size
+            differences = training_data[start:stop,0,:,:].unsqueeze(1) - validation_data[:,0,:,:].unsqueeze(0)
+            distances.append(torch.linalg.norm(differences, axis=(-1, -2)))
+
+        distances = torch.cat(distances)
         return distances
     
     def append(self, new_segment):
