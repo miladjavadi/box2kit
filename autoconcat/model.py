@@ -180,16 +180,21 @@ class MatchSearchTransfer():
     def __init__(self, codebook: PairedCodebook):
         self.codebook = codebook
     
-    def transfer_sequence(self, target_sequence):
+    def transfer_sequence(self, target_sequence, n=1):
         with torch.no_grad():
             output_sequence = torch.stack([self.transfer(target) for target in target_sequence], dim=0)
 
         return output_sequence
     
-    def transfer(self, target):
-        _, opt_index = match_search(target.unsqueeze(0), self.codebook.targets)
+    def transfer(self, target, n=1):
+        _, opt_indices = match_search(target.unsqueeze(0), self.codebook.targets, n)
+
+        matched_outputs = self.codebook.outputs[opt_indices,:,:]
+
+        _, opt_index = match_search(matched_outputs.unsqueeze(0), self.codebook.outputs, 1)
 
         output = self.codebook.outputs[opt_index]
+
         return output
 
         
@@ -349,7 +354,7 @@ class AutoConcatenator():
     def block_length(self):
         return self.corpus.block_length
 
-def match_search(input, codebook = None, distances = None):
+def match_search(input, codebook, n=1):
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
 
