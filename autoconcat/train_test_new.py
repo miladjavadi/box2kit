@@ -27,7 +27,7 @@ def safe_decode(data, codec, batch_size=8):
 def main():
 
     tempo = 90
-    subdivs = 16
+    subdivs = 8
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
