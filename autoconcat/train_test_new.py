@@ -66,7 +66,7 @@ def main():
     output_codewords = safe_decode(gen_model.codebook.outputs, dac_model)
     codebook_wave = output_codewords.reshape(1, -1)
 
-    torchaudio.save("outs/chaos/codebook.wav")
+    torchaudio.save("outs/chaos/codebook.wav", codebook_wave.detach().cpu(), model_sr)
 
     output_wave = transformed_test_wave_segs.permute(1, 0, 2).reshape(transformed_test_wave_segs.shape[1], -1)
 
