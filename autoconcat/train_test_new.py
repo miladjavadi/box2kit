@@ -55,7 +55,7 @@ def main():
     print(codebook.codebook.shape)
     gen_model = MatchSearchTransfer(codebook)
 
-    test_wave_segs = reshape_data([load_mono("16.wav", model_sr)], seg_length_in_samples).to(device)
+    test_wave_segs = reshape_data([load_mono("tester.wav", model_sr)], seg_length_in_samples).to(device)
 
     test_latents = safe_encode(test_wave_segs, dac_model)
 
@@ -67,7 +67,8 @@ def main():
 
     print(output_wave.shape)
 
-    torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
+    # torchaudio.save("outs/chaos/control.wav", output_wave.detach().cpu(), model_sr)
+    torchaudio.save("outs/chaos/owie.wav", output_wave.detach().cpu(), model_sr)
 
     
 
