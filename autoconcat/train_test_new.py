@@ -27,7 +27,7 @@ def safe_decode(data, codec, batch_size=8):
 def main():
 
     tempo = 90
-    subdivs = 8
+    subdivs = 16
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dac_model = dac.DAC.load(dac.utils.download()).to(device)
@@ -56,7 +56,7 @@ def main():
 
     test_latents = safe_encode(test_wave_segs, dac_model)
 
-    transformed_test_latents = gen_model.transfer_sequence(test_latents, 11)
+    transformed_test_latents = gen_model.transfer_sequence(test_latents, 5)
 
     transformed_test_wave_segs = safe_decode(transformed_test_latents, dac_model)
 
