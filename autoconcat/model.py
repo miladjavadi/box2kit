@@ -142,13 +142,13 @@ class PairedCodebook():
     def point_pair_distance_array(self, training_data, validation_data):
         """
         Parameters:
-        - training_data ([training pt., dac feat., frame idx.]): Training dataset/codeword candidate set
-        - validation_data ([validation pt., dac feat., frame idx.]): Validation set
+        - training_data ([training pt., domain, dac feat., frame idx.]): Training dataset/codeword candidate set
+        - validation_data ([validation pt., domain, dac feat., frame idx.]): Validation set
 
         Outputs:
         - distances ([training pt., validation pt.]): Distances between training point-validation point pairs
         """
-        differences = training_data.unsqueeze(1).expand(-1, validation_data.shape[0], -1, -1) - validation_data
+        differences = training_data[:,0,:,:].unsqueeze(1).expand(-1, validation_data.shape[0], -1, -1) - validation_data[:,0,:,:]
         distances = torch.linalg.norm(differences, axis=(-1, -2))
 
         return distances
