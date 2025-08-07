@@ -52,7 +52,7 @@ class PairedCodebook():
 
         point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
         for i in range(codebook_length):
-            print(codeword_indices.shape)
+            print(i)
             new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
             codeword_indices[i] = new_codeword_index
 
@@ -109,6 +109,8 @@ class PairedCodebook():
         expanded_codebook = codebook_distances.unsqueeze(0).expand(n_candidates, -1, -1)
 
         codebook_candidate_distances = torch.cat((expanded_codebook, candidate_distances.unsqueeze(1)), dim=1)
+
+        print(codebook_candidate_distances.shape)
 
         return codebook_candidate_distances
 
