@@ -580,15 +580,22 @@ class LinterConvTranspose1D(nn.Module):
                  padding: int):
         super().__init__()
 
-        self.net = nn.Sequential(nn.Upsample(scale_factor=stride,
-                                             mode="linear"),
-                                 nn.Conv1d(input_dim,
-                                           output_dim,
-                                           kernel_size,
-                                           stride=1,
-                                           padding=padding))
+        self.stride = stride
+        self.padding = padding
+        self.kernel_size = kernel_size
+
+        self.self.conv = nn.Conv1d(input_dim,
+                                   output_dim,
+                                   kernel_size,
+                                   stride=1,
+                                   padding=padding)
     
     def forward(self, x):
+        T = x.shape[-1]
+        upsampled_T = T * self.stride
+        x = F.interpolate(x, size=upsampled_T, mode="linear", align_corners=True)
+        x = self.conv(x)
+
         return self.net(x)
 
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
