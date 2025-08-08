@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", help="Location of output instrument training data.", type=str, metavar="path", required=True)
     parser.add_argument("--batchsize", help="Batch size for point pair distance calculation.", type=int, metavar="size", default=32)
     parser.add_argument("--name", help="Name of codebook.", type=str, metavar="codebook_name", default=f"{uload.mkdir('codebooks')}/{timestamp}")
-    parser.add_argument("--tempo", help="Reference tempo against which to divide audio segments. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
+    parser.add_argument("--bpm", help="Reference tempo against which to divide audio segments. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio segments. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long segments at 90 bpm.", type=int, metavar="subdivisions", default=8)
     parser.add_argument("--len", help="Codebook length.", type=int, metavar="length", default=512)
     parser.add_argument("--split", help="Ratio of training data.", type=float, metavar="ratio", default=0.8)
