@@ -26,6 +26,8 @@ def main(args):
     OUTPUT_DIR = args.output
     ORDER = args.order
 
+    uload.mkdir(f"{OUTPUT_DIR}/{INPUT_DIR}")
+
     file_names = [f"{INPUT_DIR}/{file}" for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
 
     with torch.inference_mode():
