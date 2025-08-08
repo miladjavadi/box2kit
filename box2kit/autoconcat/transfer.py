@@ -38,4 +38,12 @@ def main(args):
 
         for file in file_names:
             output = transfer(file, codec, ORDER, gen_model)
-            torchaudio.save(f"{OUTPUT_DIR}/file", output.detach().cpu(), model_sr)
+            torchaudio.save(f"{OUTPUT_DIR}/{INPUT_DIR}/{file}", output.detach().cpu(), model_sr)
+
+if __name__ == "__main__":
+    parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
+
+    parser.add_argument("--name", help="File name of codebook.", type=str, metavar="name", required=True)
+    parser.add_argument("--input", help="Location of input file directory.", type=str, metavar="path", required=True)
+    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="path", default="outs")
+    parser.add_argument("--order", help="Match search order.", type=int, metavar="order", default=1)
