@@ -40,7 +40,7 @@ def main(args):
             gen_model = MatchSearchTransfer(torch.load(EXPERIMENT_NAME, map_location=device))
 
         for file in file_names:
-            output = transfer(folder, file, ORDER, codec, gen_model)
+            output = transfer(INPUT_DIR, file, ORDER, codec, gen_model)
             torchaudio.save(f"{OUTPUT_DIR}/{file}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
