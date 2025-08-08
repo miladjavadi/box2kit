@@ -77,13 +77,13 @@ class SingleVAE(nn.Module):
         # decoder
         self.z2hid = nn.Linear(z_dim, n_kernels*input_dim//16) # same flattened length as flattened pre-pooled hidden output
         self.hid2wav = nn.Sequential(
-            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=4, stride=2, padding=4//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=4, stride=2, padding=4//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=4, stride=2, padding=4//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=4, stride=2, padding=4//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=4, stride=2, padding=4//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=4, stride=2, padding=4//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=4, stride=2, padding=4//2, output_padding=1)
+            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=4, stride=2, padding=4//2)
         )
 
         self.relu = nn.ReLU()
