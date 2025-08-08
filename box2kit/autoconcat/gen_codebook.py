@@ -41,7 +41,7 @@ def main(args):
 
     codebook = PairedCodebook(train_data, val_data, seg_length_in_samples, CODEBOOK_LENGTH)
 
-    torch.save(codebook, EXPERIMENT_NAME)
+    torch.save(codebook, f"{EXPERIMENT_NAME}.pt")
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
