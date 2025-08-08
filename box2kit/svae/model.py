@@ -593,10 +593,10 @@ class LinterConvTranspose1D(nn.Module):
     def forward(self, x):
         T = x.shape[-1]
         upsampled_T = T * self.stride
-        x = F.interpolate(x, size=upsampled_T, mode="linear", align_corners=True)
-        x = self.conv(x)
+        x_stretch = F.interpolate(x, size=upsampled_T, mode="linear", align_corners=True)
+        y = self.conv(x_stretch)
 
-        return self.net(x)
+        return y
 
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
         """
