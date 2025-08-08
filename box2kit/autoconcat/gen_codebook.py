@@ -22,8 +22,7 @@ def main(args):
     TARGET_DIR = args.target
     OUTPUT_DIR = args.output
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dac_model = dac.DAC.load(dac.utils.download()).to(device)
+    dac_model = dac.DAC.load(dac.utils.download()).to(DEVICE)
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(TEMPO*SUBDIVS/4))
 
@@ -32,8 +31,8 @@ def main(args):
     target_waves = uload.load_dir(TARGET_DIR, model_sr)
     output_waves = uload.load_dir(OUTPUT_DIR, model_sr)
 
-    target_waveform_segs = uload.reshape_data(target_waves, seg_length_in_samples).to(device)
-    output_waveform_segs = uload.reshape_data(output_waves, seg_length_in_samples).to(device)
+    target_waveform_segs = uload.reshape_data(target_waves, seg_length_in_samples).to(DEVICE)
+    output_waveform_segs = uload.reshape_data(output_waves, seg_length_in_samples).to(DEVICE)
 
     paired_waveform_segs = torch.cat((target_waveform_segs, output_waveform_segs), dim=1) # cat along channel direction
 
@@ -52,6 +51,7 @@ def main(args):
 
 if __name__ == "main":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    print(-2)
 
     parser=argparse.ArgumentParser(description="Generate codebook for match search transfer model.")
 
