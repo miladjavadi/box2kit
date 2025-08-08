@@ -77,13 +77,13 @@ class SingleVAE(nn.Module):
         # decoder
         self.z2hid = nn.Linear(z_dim, n_kernels*input_dim//16) # same flattened length as flattened pre-pooled hidden output
         self.hid2wav = nn.Sequential(
-            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=3, stride=2, padding=128//2),
+            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=3, stride=2, padding=(3-1)//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=3, stride=2, padding=128//2),
+            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=3, stride=2, padding=(3-1)//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=3, stride=2, padding=128//2),
+            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=3, stride=2, padding=(3-1)//2),
             nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=3, stride=2, padding=128//2)
+            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=3, stride=2, padding=(3-1)//2)
         )
 
         self.relu = nn.ReLU()
@@ -497,7 +497,7 @@ class UpsamplingLayer(nn.Module):
                 output_dim,
                 kernel_size=stride*2,
                 stride=stride, 
-                padding=stride//2)
+                padding=(stride//2)+1)
         )
     
     def forward(self, x):
