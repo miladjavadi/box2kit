@@ -26,7 +26,7 @@ def main(args):
     OUTPUT_DIR = args.output
     ORDER = args.order
 
-    file_names = [file for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
+    file_names = [f"{INPUT_DIR}/file" for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
 
     with torch.inference_mode():
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,7 +39,7 @@ def main(args):
 
         for file in file_names:
             output = transfer(file, ORDER, codec, gen_model)
-            torchaudio.save(f"{OUTPUT_DIR}/{INPUT_DIR}/{file}", output.detach().cpu(), model_sr)
+            torchaudio.save(f"{OUTPUT_DIR}/{file}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
