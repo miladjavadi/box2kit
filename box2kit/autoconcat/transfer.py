@@ -45,5 +45,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--name", help="File name of codebook.", type=str, metavar="name", required=True)
     parser.add_argument("--input", help="Location of input file directory.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="path", default="outs")
+    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="path", default=uload.mkdir("outs"))
     parser.add_argument("--order", help="Match search order.", type=int, metavar="order", default=1)
+    args=parser.parse_args()
+    main(args)
