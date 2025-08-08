@@ -34,7 +34,8 @@ def main(args):
 
         model_sr = codec.sample_rate
 
-        gen_model = torch.load(EXPERIMENT_NAME, map_location=device)
+        with torch.serialization.safe_globals([PairedCodebook]):
+            gen_model = torch.load(EXPERIMENT_NAME, map_location=device)
 
         for file in file_names:
             output = transfer(file, codec, ORDER, gen_model)
