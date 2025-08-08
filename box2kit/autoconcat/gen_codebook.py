@@ -14,7 +14,7 @@ SAMPLE_RATE = 48000
 def main(args):
     BATCH_SIZE = args.batchsize
     TEMPO = args.bpm
-    SUBDIVS = args.subdivs
+    SUBDIVS = args.subdiv
     EXPERIMENT_NAME = args.name
     CODEBOOK_LENGTH = args.len
     SPLIT = args.split
