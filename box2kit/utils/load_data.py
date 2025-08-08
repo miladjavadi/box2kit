@@ -22,7 +22,7 @@ def load_dir(dir: str, target_sr: int) -> list[torch.FloatTensor]:
 def reshape_data(waveforms: list[torch.FloatTensor], block_length: int) -> torch.FloatTensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths]
 
-    dataset = torch.zeros((0, 1, block_length))
+    dataset = torch.zeros((0, 1, block_length)).to(waveforms[0].device)
     for waveform in waveforms:
         # trim waveform to whole number of block lengths
         waveform = waveform[:,:((waveform.shape[1]//block_length)*block_length)]
