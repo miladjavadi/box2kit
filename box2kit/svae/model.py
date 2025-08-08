@@ -77,13 +77,13 @@ class SingleVAE(nn.Module):
         # decoder
         self.z2hid = nn.Linear(z_dim, n_kernels*input_dim//16) # same flattened length as flattened pre-pooled hidden output
         self.hid2wav = nn.Sequential(
-            nn.ConvTranspose1d(n_kernels, n_kernels//2, kernel_size=4, stride=2, padding=(4-1)//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=4, stride=2, padding=4//2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose1d(n_kernels//2, n_kernels//4, kernel_size=4, stride=2, padding=(4-1)//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=4, stride=2, padding=4//2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose1d(n_kernels//4, n_kernels//8, kernel_size=4, stride=2, padding=(4-1)//2, output_padding=1),
+            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=4, stride=2, padding=4//2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose1d(n_kernels//8, n_channels, kernel_size=4, stride=2, padding=(4-1)//2, output_padding=1)
+            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=4, stride=2, padding=4//2, output_padding=1)
         )
 
         self.relu = nn.ReLU()
@@ -492,7 +492,7 @@ class UpsamplingLayer(nn.Module):
 
         self.net = nn.Sequential(
             nn.LeakyReLU(.2),
-            nn.ConvTranspose1d(
+            LinterConvTranspose1D(
                 input_dim,
                 output_dim,
                 kernel_size=stride*2,
@@ -570,6 +570,26 @@ class GenerationCallback(Callback):
 
             torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
+
+class LinterConvTranspose1D(nn.Module):
+    def __init__(self,
+                 input_dim: int,
+                 output_dim: int,
+                 kernel_size: int,
+                 stride: int, 
+                 padding: int):
+        super().__init__()
+
+        self.net = nn.Sequential(nn.Upsample(scale_factor=stride,
+                                             mode="linear"),
+                                 nn.Conv1d(input_dim,
+                                           output_dim,
+                                           kernel_size,
+                                           stride=1,
+                                           padding=padding))
+    
+    def forward(self, x):
+        return self.net(x)
 
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
         """
