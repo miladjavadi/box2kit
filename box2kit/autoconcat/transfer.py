@@ -38,7 +38,7 @@ def main(args):
             gen_model = torch.load(EXPERIMENT_NAME, map_location=device)
 
         for file in file_names:
-            output = transfer(file, codec, ORDER, gen_model)
+            output = transfer(file, ORDER, codec, gen_model)
             torchaudio.save(f"{OUTPUT_DIR}/{INPUT_DIR}/{file}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
