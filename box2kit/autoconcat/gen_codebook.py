@@ -58,6 +58,7 @@ if __name__ == "main":
     parser.add_argument("--target", help="Location of target instrument training data.", type=str, metavar="path", required=True)
     parser.add_argument("--output", help="Location of output instrument training data.", type=str, metavar="path", required=True)
     parser.add_argument("--batchsize", help="Batch size for point pair distance calculation.", type=int, metavar="size", default=32)
+    print(-1)
     parser.add_argument("--name", help="Name of codebook.", type=str, metavar="codebook_name", default=f"{uload.mkdir('codebooks')}/{timestamp}")
     print(0)
     parser.add_argument("--tempo", help="Reference tempo against which to divide audio segments. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
