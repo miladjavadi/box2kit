@@ -27,6 +27,8 @@ def main(args):
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(TEMPO*SUBDIVS/4))
 
+    print(1)
+
     target_waves = uload.load_dir(TARGET_DIR, model_sr)
     output_waves = uload.load_dir(OUTPUT_DIR, model_sr)
 
@@ -42,7 +44,11 @@ def main(args):
 
     codebook = PairedCodebook(train_data, val_data, seg_length_in_samples, CODEBOOK_LENGTH)
 
+    print(2)
+
     torch.save(codebook, EXPERIMENT_NAME)
+
+    print(3)
 
 if __name__ == "main":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
