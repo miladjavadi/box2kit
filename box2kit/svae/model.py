@@ -584,7 +584,7 @@ class LinterConvTranspose1D(nn.Module):
         self.padding = padding
         self.kernel_size = kernel_size
 
-        self.self.conv = nn.Conv1d(input_dim,
+        self.conv = nn.Conv1d(input_dim,
                                    output_dim,
                                    kernel_size,
                                    stride=1,
