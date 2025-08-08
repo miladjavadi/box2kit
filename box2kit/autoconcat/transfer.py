@@ -26,7 +26,7 @@ def main(args):
     OUTPUT_DIR = args.output
     ORDER = args.order
 
-    file_names = [f"{INPUT_DIR}/file" for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
+    file_names = [f"{INPUT_DIR}/{file}" for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
 
     with torch.inference_mode():
         device = "cuda" if torch.cuda.is_available() else "cpu"
