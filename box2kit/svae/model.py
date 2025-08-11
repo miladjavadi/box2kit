@@ -188,8 +188,8 @@ class TransferVAE(LightningVAE):
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
-                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
-                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
+                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr = 1e-4):
         super().__init__(block_length,
@@ -245,8 +245,8 @@ class TransferGAN(LightningVAE):
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
-                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
-                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
+                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4,
                  lambda_adversarial: float = 1,
@@ -593,7 +593,7 @@ class LinterConvTranspose1D(nn.Module):
     def forward(self, x):
         T = x.shape[-1]
         upsampled_T = T * self.stride
-        x_stretch = F.interpolate(x, size=upsampled_T, mode="linear", align_corners=True)
+        x_stretch = F.interpolate(x, size=upsampled_T, mode="nearest", align_corners=True)
         y = self.conv(x_stretch)
 
         return y
