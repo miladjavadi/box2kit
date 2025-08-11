@@ -13,13 +13,13 @@ def plot_fft(signal, sample_rate):
     plt.title("FFT of VAE Output")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Amplitude")
-    plt.xlim(0, 200)  # focus on low freqs
+    plt.xlim(0, 500)  # focus on low freqs
     plt.grid()
     # plt.savefig("outs/roots.png")
     plt.show()
 
 SAMPLE_RATE = 48000
 if __name__=="__main__":
-    wave = load_mono("outs/b2kgan_test1/epoch_2100.wav", SAMPLE_RATE).cpu().numpy()
+    wave = load_mono("outs/box2kit_test/epoch_2500.wav", SAMPLE_RATE).cpu().numpy()
 
     plot_fft(wave[0], SAMPLE_RATE)
