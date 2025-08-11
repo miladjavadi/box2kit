@@ -4,8 +4,8 @@ import dac
 import pickle
 import argparse
 
-from autoconcat.model import AutoConcatenator
-from gantransfer.train import load_mono
+from box2kit.autoconcat.model import AutoConcatenator
+from box2kit.gantransfer.train import load_mono
 
 def main(args):
     input_path = args.input
