@@ -593,7 +593,7 @@ class LinterConvTranspose1D(nn.Module):
     def forward(self, x):
         T = x.shape[-1]
         upsampled_T = T * self.stride
-        x_stretch = F.interpolate(x, size=upsampled_T, mode="nearest", align_corners=True)
+        x_stretch = F.interpolate(x, size=upsampled_T, mode="nearest")
         y = self.conv(x_stretch)
 
         return y
