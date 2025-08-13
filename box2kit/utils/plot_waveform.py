@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from box2kit.utils.load_data import load_mono
 
+SAMPLE_RATE = 48000
+
 def plot_fft(signal, sample_rate):
     # signal: 1D numpy array (e.g., a single audio channel)
     N = len(signal)
@@ -18,8 +20,36 @@ def plot_fft(signal, sample_rate):
     # plt.savefig("outs/roots.png")
     plt.show()
 
-SAMPLE_RATE = 48000
-if __name__=="__main__":
-    wave = load_mono("outs/box2kit_test/epoch_2500.wav", SAMPLE_RATE).cpu().numpy()
+def rms_am(signal, window_size=120):
 
-    plot_fft(wave[0], SAMPLE_RATE)
+    num_windows = len(signal) // window_size
+
+    t = np.arange(num_windows*4) / (SAMPLE_RATE*4/(window_size))
+
+    windows = signal[:num_windows * window_size].reshape(num_windows, window_size)
+    rms_values = np.sqrt(np.mean(windows**2, axis=1))
+
+    modulator = np.repeat(rms_values, 4)
+
+    carrier = np.sin((SAMPLE_RATE*4/(window_size))*t)
+
+    output = carrier * modulator
+    
+    return t, output
+    
+
+if __name__=="__main__":
+    wave = load_mono("ins/metal_wave.wav", SAMPLE_RATE).cpu().numpy()[0]
+
+    # plot_fft(wave[0], SAMPLE_RATE)
+
+    # t = np.arange(len(wave)) / SAMPLE_RATE
+    # plt.plot(t, wave)
+    # np.savetxt("outs/linn_wave.dat", np.column_stack((t, wave)), fmt="%.6f")
+
+    t, rms_wave = rms_am(wave)
+
+    plt.plot(t, rms_wave)
+    np.savetxt("outs/metal_wave.dat", np.column_stack((t, rms_wave)), fmt="%.6f")
+
+    plt.show()
