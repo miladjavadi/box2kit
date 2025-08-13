@@ -122,6 +122,7 @@ class LightningVAE(pl.LightningModule):
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
+                 nmog: int = 0,
                  mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
                  full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
@@ -133,9 +134,11 @@ class LightningVAE(pl.LightningModule):
                              nkernels,
                              kernel_sizes,
                              zdim,
+                             nmog,
                              nchannels,
                              strides,
-                             dilations)
+                             dilations,
+                             nmog)
 
         self.lr = lr
         self.mel_loss_fn = mel_loss_fn
@@ -188,6 +191,7 @@ class TransferVAE(LightningVAE):
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
+                 nmog: int = 0,
                  mel_loss_fn = MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
                  full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
@@ -201,6 +205,7 @@ class TransferVAE(LightningVAE):
                          nchannels,
                          strides,
                          dilations,
+                         nmog,
                          mel_loss_fn,
                          full_stft_loss_fn,
                          mb_stft_loss_fn,
@@ -221,7 +226,7 @@ class TransferVAE(LightningVAE):
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+        kl_div = self.model.prior(mu, sigma)
 
         # backprop
         beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
@@ -245,6 +250,7 @@ class TransferGAN(LightningVAE):
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
+                 nmog: int = 0,
                  mel_loss_fn = MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
                  full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
@@ -262,6 +268,7 @@ class TransferGAN(LightningVAE):
                          nchannels,
                          strides,
                          dilations,
+                         nmog,
                          mel_loss_fn,
                          full_stft_loss_fn,
                          mb_stft_loss_fn,
@@ -293,7 +300,7 @@ class TransferGAN(LightningVAE):
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = -torch.mean(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+        kl_div = self.model.prior(mu, sigma)
 
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
@@ -364,7 +371,8 @@ class PQMFVAE(nn.Module):
                  zdim: int = 128,
                  nchannels: int = 1,
                  strides: list[int] = [4, 4, 4, 2],
-                 dilations: list[int] = [1, 3, 9]):
+                 dilations: list[int] = [1, 3, 9],
+                 nmog: int = 0):
         super().__init__()
 
         self.pqmf = pqmf
@@ -392,6 +400,12 @@ class PQMFVAE(nn.Module):
                                       nn.BatchNorm1d(nchannels*pqmf.n_band))
         self.hid2loud = nn.Sequential(nn.ZeroPad1d(get_padding(3)),
                                         nn.Conv1d(nkernels[0], 1, kernel_size=3))
+        
+        # prior
+        if nmog > 0:
+            self.prior = MOGPrior(zdim, nmog)
+        else:
+            self.prior = None
     
     def encode(self, x):
         x_mb = self.pqmf(x)
@@ -415,6 +429,40 @@ class PQMFVAE(nn.Module):
         x_hat = torch.tanh(self.decode(z_reparam))
 
         return x_hat, mu, sigma
+
+class MOGPrior(nn.Module):
+    def __init__(self, zdim: int, n_components: int):
+        super().__init__()
+
+        self.zdim = zdim
+        self.n_components = n_components
+
+        if n_components > 0:
+            self.weight_logits = nn.Parameter(torch.randn(n_components))
+            self.means = nn.Parameter(torch.randn(n_components, zdim))
+            self.variances = nn.Parameter(torch.randn(n_components, zdim))
+        
+        else:
+            self.weight_logits = None
+            self.means = None
+            self.variances = None
+    
+    def kld_estimate(self, post_mean, post_var):
+        weights = torch.softmax(self.weight_logits)
+
+        kld_components = torch.stack([kld_component(mean, var, post_mean, post_var) for (mean, var) in (self.means, self.variances)], 1)
+        exp_sum = torch.sum(self.weights.reshape(1, -1, 1, 1) * torch.exp(-kld_components), 1)
+        elbo = -torch.log(exp_sum)
+
+        return elbo
+    
+    def forward(self, post_mean, post_var):
+        if self.weight_logits is not None:
+            kld = self.kld_estimate(post_mean, post_var)
+        else:
+            kld = kld_component(1, 0, post_mean, post_var)
+        
+        return kld
 
 class EncoderStack(nn.Module):
     def __init__(self,
@@ -630,6 +678,9 @@ def lin_annealed_beta(current_step, total_steps):
 
 def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
+
+def kld_component(prior_mean: torch.Tensor, prior_var: torch.Tensor, post_mean: torch.Tensor, post_var: torch.Tensor):
+    return torch.pow(post_mean - prior_mean, 2) + torch.pow(post_var / prior_var, 2) - torch.log(torch.pow(post_var / prior_var, 2)) - 1
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)
