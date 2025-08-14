@@ -449,6 +449,7 @@ class MOGPrior(nn.Module):
     def kld_estimate(self, post_mean, post_var):
         weights = torch.softmax(self.weight_logits, 0)
 
+        print(self.means[1].shape)
         kld_components = torch.stack([kld_component(mean, var, post_mean, post_var) for (mean, var) in zip(self.means, self.variances)], 1)
         exp_sum = torch.sum(weights.reshape(1, -1, 1, 1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
