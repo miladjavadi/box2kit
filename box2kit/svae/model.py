@@ -447,10 +447,10 @@ class MOGPrior(nn.Module):
             self.variances = None
     
     def kld_estimate(self, post_mean, post_var):
-        weights = torch.softmax(self.weight_logits)
+        weights = torch.softmax(self.weight_logits, 0)
 
-        kld_components = torch.stack([kld_component(mean, var, post_mean, post_var) for (mean, var) in (self.means, self.variances)], 1)
-        exp_sum = torch.sum(self.weights.reshape(1, -1, 1, 1) * torch.exp(-kld_components), 1)
+        kld_components = torch.stack([kld_component(mean, var, post_mean, post_var) for (mean, var) in zip(self.means, self.variances)], 1)
+        exp_sum = torch.sum(weights.reshape(1, -1, 1, 1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
 
         return elbo
