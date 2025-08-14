@@ -38,6 +38,7 @@ def main(args):
     LAMBDA_ADV = args.ladv
     WARMUP = args.warmup
     NFFT = 1024
+    NMOG = args.mog
 
     block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
     # trunc_block_length = (block_length//2048)*2048
@@ -63,7 +64,7 @@ def main(args):
         dummy = dataset[0][0]
         dummy_stft = torch.stft(dummy.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=dummy.device)).abs()
 
-    model = TransferGAN(block_length, [dummy_stft.shape[1], dummy_stft.shape[2]], lr=LR, lambda_adversarial=LAMBDA_ADV, warmup=WARMUP)
+    model = TransferGAN(block_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=NMOG, lr=LR, lambda_adversarial=LAMBDA_ADV, warmup=WARMUP)
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
@@ -94,5 +95,6 @@ if __name__ == "__main__":
     parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
     parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
     parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
+    parser.add_argument("--mog", help="Number of Gaussian mixture modes in prior. 0 for standard Gaussian.", type=int, metavar="modes", default=0)
     args=parser.parse_args()
     main(args)
