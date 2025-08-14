@@ -134,7 +134,6 @@ class LightningVAE(pl.LightningModule):
                              nkernels,
                              kernel_sizes,
                              zdim,
-                             nmog,
                              nchannels,
                              strides,
                              dilations,
