@@ -450,10 +450,8 @@ class MOGPrior(nn.Module):
         weights = torch.softmax(self.weight_logits, 0)
 
         kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), -1) for (mean, var) in zip(self.means, self.variances)], 1)
-        print(kld_components.shape)
         exp_sum = torch.sum(weights.reshape(1, -1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
-        print(elbo.shape)
 
         return elbo
     
