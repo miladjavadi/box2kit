@@ -300,7 +300,6 @@ class TransferGAN(LightningVAE):
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
         kl_div = torch.mean(self.model.prior(mu, sigma), 0)
-        print(kl_div.shape)
 
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
@@ -450,8 +449,8 @@ class MOGPrior(nn.Module):
     def kld_estimate(self, post_mean, post_var):
         weights = torch.softmax(self.weight_logits, 0)
 
-        kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var) for (mean, var) in zip(self.means, self.variances)], 1)
-        exp_sum = torch.sum(weights.reshape(1, -1, 1, 1) * torch.exp(-kld_components), 1)
+        kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), 0) for (mean, var) in zip(self.means, self.variances)], 1)
+        exp_sum = torch.sum(weights.reshape(1, -1, 1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
 
         return elbo
