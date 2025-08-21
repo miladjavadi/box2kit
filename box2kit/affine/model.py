@@ -4,12 +4,17 @@ import pytorch_lightning as pl
 import dac
 from dac import DAC
 from audiotools import AudioSignal
-from gantransfer.ganmodel import DiscriminatorV2
+from box2kit.gantransfer.ganmodel import DiscriminatorV2
 from torch import optim
 from pytorch_lightning.callbacks import Callback
 import torchaudio
-from utils.load_data import load_mono, reshape_data
+from box2kit.utils.load_data import load_mono, reshape_data
 import os
+import numpy as np
+import sklearn
+from sklearn.linear_model import LinearRegression
+from sklearn.base import clone
+# from sklearn.multioutput import MultiOutputRegressor
 
 class AffineLightning(pl.LightningModule):
     def __init__(self,
@@ -146,7 +151,7 @@ class AffineLightning(pl.LightningModule):
         self.codec.eval()
     
 
-class AffineTransfer(nn.Module):
+class AffineTransferOld(nn.Module):
     def __init__(self,
                  input_dim: int = 1024):
         super().__init__()
@@ -158,13 +163,6 @@ class AffineTransfer(nn.Module):
             y_hat = self.A @ x + self.b # Ax == Ax[:,i] for columns i in x
             return y_hat
     
-if __name__ == "__main__":
-    x = torch.randn(4,1024,300)
-    model = AffineTransfer(1024)
-
-    y = model(x)
-    print(x.shape, y.shape, model.A.shape, model.b.shape)
-
 class GenerationCallback(Callback):
     def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
@@ -215,3 +213,66 @@ class GenerationCallback(Callback):
     
     # def on_validation_epoch_start(self):
     #     self.codec.eval()
+
+class AffineTransfer():
+    def __init__(self, input_dim: int = 1024):
+        """
+        here, latent sequences are arranged [T, D], which is a transpose of how it is in the paper,
+        and other model implementations. this is because each time step is considered its own data point,
+        making it more intuitive for time to be on the first axis.
+        """ 
+
+        self.dim = input_dim
+        self.estimator = LinearRegression()
+        self.is_fitted = False
+    
+    def fit(self, targets, outputs, n_trials = 100, threshold = 10, n_samples = 256):
+        n_points = targets.shape[0]
+
+        bestimator = self.estimator
+        if self.is_fitted:
+            approximations = bestimator.predict(targets)
+            residuals = approximations - outputs
+            distances = np.linalg.norm(residuals, axis=0)
+            best_score = np.count_nonzero(np.less(distances, threshold))/n_points # ratio of inliers
+        else:
+            best_score = 0
+
+        rng = np.random.default_rng()
+        for i in range(n_trials):
+            model = clone(bestimator) # new instance of lin regressor
+            sample_indices = rng.choice(n_points, n_samples)
+            target_samples = targets[sample_indices]; output_samples = outputs[sample_indices]
+            model.fit(target_samples, output_samples)
+
+            approximations = model.predict(targets)
+            residuals = approximations - outputs
+            distances = np.linalg.norm(residuals, axis=0)
+            score = np.count_nonzero(np.less(distances, threshold))/n_points
+
+            if score > best_score:
+                bestimator = model
+        
+        self.estimator = bestimator
+        self.is_fitted = True
+    
+    def __call__(self, targets):
+        return self.estimator.predict(targets)
+
+    # def transform_sequence(self, targets, A, b):
+    #     transformed = np.stack([self.transform_vector(target, A, b) for target in targets], axis=0)
+    #     return transformed
+    
+    # def transform_vector(self, target, A, b):
+    #     transformed = A @ target + b
+    #     return transformed
+    
+    
+if __name__ == "__main__":
+    x = np.random.rand(300, 1024)
+    y = np.random.rand(300, 1024)
+    model = AffineTransfer(1024)
+    model.fit(x, y)
+
+    y = model(x)
+    print(x.shape, y.shape, model.estimator.coef_.shape, model.estimator.intercept_.shape)
