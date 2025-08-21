@@ -248,13 +248,16 @@ class AffineTransfer():
             approximations = model.predict(targets)
             residuals = approximations - outputs
             distances = np.linalg.norm(residuals, axis=0)
+            print(np.mean(distances))
             score = np.count_nonzero(np.less(distances, threshold))/n_points
 
             if score > best_score:
                 bestimator = model
+                self.is_fitted = True
         
         self.estimator = bestimator
-        self.is_fitted = True
+        if best_score == 0:
+            print("No sufficient estimator found.")
     
     def __call__(self, targets):
         return self.estimator.predict(targets)
