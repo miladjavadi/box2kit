@@ -27,7 +27,7 @@ def main(args):
     BATCH_SIZE = args.batchsize
     LR = args.lr
     TEMPO = args.bpm
-    SUBDIVS = args.subdivs
+    SUBDIV = args.subdiv
     TEST_FILE = args.test
     TEST_OUT = args.out
     TEST_FREQ = args.outfreq
@@ -40,7 +40,7 @@ def main(args):
     NFFT = 1024
     NMOG = args.mog
 
-    block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
+    block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
     # trunc_block_length = (block_length//2048)*2048
     # remainder = block_length % 2048
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
     parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=1e-4)
     parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
-    parser.add_argument("--subdivs", help="Segments per bar", metavar="divs", type=int, default=8)
+    parser.add_argument("--subdiv", help="Segments per bar", metavar="divs", type=int, default=8)
     parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--out", help="Name of output test file dir", type=str, metavar="dirname", default=None)
     parser.add_argument("--outfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
