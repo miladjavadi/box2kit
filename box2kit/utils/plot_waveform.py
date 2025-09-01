@@ -39,7 +39,7 @@ def rms_am(signal, window_size=120):
     
 
 if __name__=="__main__":
-    wave = load_mono("ins/metal_wave.wav", SAMPLE_RATE).cpu().numpy()[0]
+    wave = load_mono("ins/rekördbux.wav", SAMPLE_RATE).cpu().numpy()[0][:70000]
 
     # plot_fft(wave[0], SAMPLE_RATE)
 
@@ -50,6 +50,6 @@ if __name__=="__main__":
     t, rms_wave = rms_am(wave)
 
     plt.plot(t, rms_wave)
-    np.savetxt("outs/metal_wave.dat", np.column_stack((t, rms_wave)), fmt="%.6f")
+    np.savetxt("outs/nlp_wave.dat", np.column_stack((t, rms_wave)), fmt="%.6f")
 
     plt.show()

@@ -13,7 +13,7 @@ def main():
     outputs = uload.safe_encode(uload.reshape_data(uload.load_dir("training_data/drum_kit", sr)[:2], 700),codec,8).transpose(1,2).reshape(-1,1024).cpu().numpy()
 
     model = AffineTransfer(1024)
-    model.fit(targets, outputs, threshold=100, n_samples=200)
+    model.fit(targets, outputs, threshold=100, n_samples=256)
 
     test_seq = uload.safe_encode(uload.reshape_data([uload.load_mono("16.wav", sr)], 700),codec,8).transpose(1,2).reshape(-1,1024).cpu().numpy()
     transformed_test = model(test_seq)
