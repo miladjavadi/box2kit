@@ -331,6 +331,7 @@ class DACGANV2(pl.LightningModule):
                  lambda_adversarial: float = 1,
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
                  spectral_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
+                 mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
                  warmup: int = 250):
         super().__init__()
 
@@ -339,6 +340,7 @@ class DACGANV2(pl.LightningModule):
         self.sr = codec.sample_rate
 
         self.spectral_loss_fn = spectral_loss_fn
+        self.mel_loss_fn = mel_loss_fn
         self.embedding_loss_fn = nn.MSELoss()
         self.adversarial_loss_fn = nn.BCELoss()
 
@@ -395,7 +397,10 @@ class DACGANV2(pl.LightningModule):
         # calculate generator losses
         gen_optimizer.zero_grad()
 
-        spectral_loss = self.spectral_loss_fn(AudioSignal(gen, self.sr), AudioSignal(target_post, self.sr))
+        gen_AS = AudioSignal(gen, self.sr)
+        target_AS = AudioSignal(target_post, self.sr)
+
+        spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
         embedding_loss = self.embedding_loss_fn(Z_gen, Z_target)
 
         if self.adversarial_phase:

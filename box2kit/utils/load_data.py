@@ -3,7 +3,7 @@ import torchaudio
 from torch.utils.data import DataLoader
 import os
 
-def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
+def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio, sr = torchaudio.load(file_name)
     if audio.shape[0] > 1:
         audio = audio.mean(0, keepdim=True)
@@ -14,12 +14,12 @@ def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
     audio = audio.clamp(-1, 1)
     return audio
 
-def load_dir(dir: str, target_sr: int) -> list[torch.FloatTensor]:
+def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
     files = sorted(os.listdir(dir))
     waves = [load_mono((f"{dir}/{file}"), target_sr) for file in files if file[-4:] == ".wav"]
-    return waves
+    return waves, files
 
-def reshape_data(waveforms: list[torch.FloatTensor], block_length: int) -> torch.FloatTensor:
+def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.FloatTensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths]
 
     dataset = torch.zeros((0, 1, block_length)).to(waveforms[0].device)

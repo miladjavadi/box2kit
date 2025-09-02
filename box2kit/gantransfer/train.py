@@ -16,7 +16,7 @@ import torchaudio
 from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
 
 # Load audio file
-def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
+def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio, sr = torchaudio.load(file_name)
     if audio.shape[0] > 1:
         audio = audio.mean(0, keepdim=True)
@@ -27,7 +27,7 @@ def load_mono(file_name: str, target_sr: int) -> torch.FloatTensor:
     audio = audio.clamp(-1, 1)
     return audio
 
-def reshape_dataset(waveforms: list[torch.FloatTensor], block_length_in_samples: int) -> torch.FloatTensor:
+def reshape_dataset(waveforms: list[torch.Tensor], block_length_in_samples: int) -> torch.Tensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths_in_samples]
 
     dataset = torch.zeros((0, block_length_in_samples), device=waveforms[0].device)
@@ -155,7 +155,7 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    dac_model = dac.DAC.load(dac.utils.download()).to(device)
+    dac_model = dac.DAC.load(dac.utils.download()).to(device) # type: ignore
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
@@ -174,7 +174,7 @@ def main(args):
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
     tblogger = TensorBoardLogger(save_dir="ganv2_logs", name=experiment_name)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger) # type: ignore
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
