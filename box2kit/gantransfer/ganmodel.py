@@ -34,8 +34,37 @@ class Generator(nn.Module):
             nn.Conv1d(256, 1024, kernel_size=3, padding="same")
         )
 
-    def forward(self, input):
-        return self.main(input)
+        # encoder
+        self.outer2hid = nn.Sequential(
+            nn.Conv1d(1024, 256, kernel_size=3, padding="same"),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU()
+        )
+        self.hid2mu_inner = nn.Conv1d(256, 64, kernel_size=5, padding="same")
+        self.hid2sigma_inner = nn.Conv1d(256, 64, kernel_size=5, padding="same")
+
+        # decoder
+        self.inner2outer = nn.Sequential(
+            nn.Conv1d(64, 256, kernel_size=5, padding="same"),
+            nn.LeakyReLU()
+        )
+    
+    def encode(self, outer):
+        h = self.outer2hid(outer)
+        mu, sigma = self.hid2mu_inner(h), self.hid2sigma_inner(h)
+        return mu, sigma
+    
+    def decode(self, inner):
+        return self.inner2outer(inner)
+
+    def forward(self, outer):
+        mu, sigma = self.encode(input)
+        epsilon = torch.randn_like(sigma)
+
+        inner_reparam = mu + sigma*epsilon
+        outer_hat = self.decode(inner_reparam)
+
+        return outer_hat
     
 ### DISCRIMINATOR
 
@@ -452,6 +481,10 @@ class DACGANV2(pl.LightningModule):
     def on_train_epoch_start(self):
         self.codec.eval()
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
+        if self.adversarial_phase:
+            self.generator.outer2hid.requires_grad_ = False
+            self.generator.hid2mu_inner.requires_grad_ = False
+            self.generator.hid2sigma_inner.requires_grad_ = False
         return super().on_train_epoch_start()
 
     def on_fit_epoch_start(self):

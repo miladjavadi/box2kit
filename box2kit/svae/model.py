@@ -111,6 +111,7 @@ class SingleVAE(nn.Module):
 
         return x_hat, mu, sigma
 
+# current
 class LightningVAE(pl.LightningModule):
     def __init__(self,
                  block_length: int,
@@ -237,6 +238,7 @@ class TransferVAE(LightningVAE):
         self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         return loss
 
+# current
 class TransferGAN(LightningVAE):
     def __init__(self,
                  block_length: int,
@@ -349,6 +351,12 @@ class TransferGAN(LightningVAE):
 
     def on_train_epoch_start(self):
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
+        if self.adversarial_phase:
+            # freeze encoder during adversarial phase
+            self.model.pqmf2hid.requires_grad_ = False
+            self.model.hid2mu.requires_grad_ = False
+            self.model.hid2sigma.requires_grad_ = False
+            self.model.prior.requires_grad_ = False
         return super().on_train_epoch_start()
     
     def configure_optimizers(self):
@@ -356,7 +364,7 @@ class TransferGAN(LightningVAE):
         discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=self.lr)
         return [gen_optimizer, discr_optimizer], []
 
-
+# current
 class PQMFVAE(nn.Module):
     """
     PQMF-to-waveform VAE model based on IRCAM's RAVE:
@@ -399,6 +407,12 @@ class PQMFVAE(nn.Module):
                                       nn.BatchNorm1d(nchannels*pqmf.n_band))
         self.hid2loud = nn.Sequential(nn.ZeroPad1d(get_padding(3)),
                                         nn.Conv1d(nkernels[0], 1, kernel_size=3))
+
+        self.hid2noise = NoiseGenerator(in_size=nkernels[0],
+                                        hidden_size=128,
+                                        data_size=pqmf.n_band,
+                                        strides=[2, 2, 2],
+                                        noise_bands=5)
         
         # prior
         if nmog > 0:
@@ -414,7 +428,7 @@ class PQMFVAE(nn.Module):
     
     def decode(self, z):
         h = self.z2hid(z)
-        x_wav, x_loud = self.hid2wave(h), self.hid2loud(h)
+        x_wav, x_loud,  = self.hid2wave(h), self.hid2loud(h)
 
         x_mb = x_wav * x_loud
         x_hat = self.pqmf.inverse(x_mb)
@@ -578,6 +592,52 @@ class DecoderStack(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+class NoiseGenerator(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        hidden_size: int,
+        data_size: int,
+        strides: int,
+        noise_bands: int,
+        n_channels: int = 1,
+        activation = nn.LeakyReLU(.2)
+    ):
+        super().__init__()
+        net = []
+        self.n_channels = n_channels
+        channels = [in_size]
+        channels.extend((len(strides) - 1) * [hidden_size])
+        channels.append(data_size * noise_bands * n_channels)
+
+        for i, r in enumerate(strides):
+            net.append(
+                nn.Conv1d(
+                    channels[i],
+                    channels[i + 1],
+                    2 * r,
+                    padding=(r, 0),
+                    stride=r,
+                ))
+            if i != len(strides) - 1:
+                net.append(activation(channels[i + 1]))
+
+        self.net = nn.Sequential(*net)
+        self.data_size = data_size
+
+    def forward(self, x):
+        amp = mod_sigmoid(self.net(x) - 5)
+        amp = amp.permute(0, 2, 1)
+        amp = amp.reshape(amp.shape[0], amp.shape[1], self.n_channels * self.data_size, -1)
+
+        ir = amp_to_impulse_response(amp, self.target_size)
+        noise = torch.rand_like(ir) * 2 - 1
+
+        noise = fft_convolve(noise, ir).permute(0, 2, 1, 3)
+        noise = noise.reshape(noise.shape[0], noise.shape[1], -1)
+        return noise
+
+
 class GenerationCallback(Callback):
     def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
@@ -680,6 +740,50 @@ def warm_cos_annealed_beta(current_step, total_steps):
 
 def kld_component(prior_mean: torch.Tensor, prior_var: torch.Tensor, post_mean: torch.Tensor, post_var: torch.Tensor):
     return torch.mean(torch.pow(post_mean - prior_mean, 2) + torch.pow(post_var / prior_var, 2) - torch.log(torch.pow(post_var / prior_var, 2)) - 1, -1)
+
+def mod_sigmoid(x):
+    return 2 * torch.sigmoid(x)**2.3 + 1e-7
+
+def amp_to_impulse_response(amp, target_size):
+    """
+    transforms frequency amps to ir on the last dimension.
+    
+    Copied from IRCAM ACID'S RAVE:
+    https://github.com/acids-ircam/RAVE/blob/master/rave/core.py
+    """
+    amp = torch.stack([amp, torch.zeros_like(amp)], -1)
+    amp = torch.view_as_complex(amp)
+    amp = torch.fft.irfft(amp)
+
+    filter_size = amp.shape[-1]
+
+    amp = torch.roll(amp, filter_size // 2, -1)
+    win = torch.hann_window(filter_size, dtype=amp.dtype, device=amp.device)
+
+    amp = amp * win
+
+    amp = nn.functional.pad(
+        amp,
+        (0, int(target_size) - int(filter_size)),
+    )
+    amp = torch.roll(amp, -filter_size // 2, -1)
+
+    return amp
+
+def fft_convolve(signal, kernel):
+    """
+    convolves signal by kernel on the last dimension
+
+    Copied from IRCAM ACID'S RAVE:
+    https://github.com/acids-ircam/RAVE/blob/master/rave/core.py
+    """
+    signal = nn.functional.pad(signal, (0, signal.shape[-1]))
+    kernel = nn.functional.pad(kernel, (kernel.shape[-1], 0))
+
+    output = torch.fft.irfft(torch.fft.rfft(signal) * torch.fft.rfft(kernel))
+    output = output[..., output.shape[-1] // 2:]
+
+    return output
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)
