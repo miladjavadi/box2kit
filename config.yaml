@@ -27,7 +27,7 @@ models:
       maxepochs: 10000
       lemb: 1
       ladv: 1
-      warmup: 2500
+      warmup: 5000
 
   # affine transformation
   - name: affine
@@ -56,7 +56,7 @@ models:
       lr: 1e-4
       subdiv: 8
       ladv: 1
-      warmup: 2500
+      warmup: 5000
       mog: 0
   
   # wave2wave transformation w/ standard gaussian prior
@@ -68,7 +68,7 @@ models:
       lr: 1e-4
       subdiv: 8
       ladv: 1
-      warmup: 2500
+      warmup: 5000
       mog: 0
 
    # wave2wave projection w/ mog8 prior
@@ -80,7 +80,7 @@ models:
       lr: 1e-4
       subdiv: 8
       ladv: 1
-      warmup: 2500
+      warmup: 5000
       mog: 8
   
   # wave2wave transformation w/ mog8 prior
@@ -92,5 +92,5 @@ models:
       lr: 1e-4
       subdiv: 8
       ladv: 1
-      warmup: 2500
+      warmup: 5000
       mog: 8

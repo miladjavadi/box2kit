@@ -39,7 +39,7 @@ def rms_am(signal, window_size=120):
     
 
 if __name__=="__main__":
-    wave = load_mono("ins/rekördbux.wav", SAMPLE_RATE).cpu().numpy()[0][:70000]
+    wave = load_mono("training_data/drum_kit/8.wav", SAMPLE_RATE).cpu().numpy()[0][:int(SAMPLE_RATE*1.5)]
 
     # plot_fft(wave[0], SAMPLE_RATE)
 
@@ -49,7 +49,9 @@ if __name__=="__main__":
 
     t, rms_wave = rms_am(wave)
 
+    rms_wave = rms_wave*2.4
+
     plt.plot(t, rms_wave)
-    np.savetxt("outs/nlp_wave.dat", np.column_stack((t, rms_wave)), fmt="%.6f")
+    np.savetxt("outs/dk8_wave.dat", np.column_stack((t, rms_wave)), fmt="%.6f")
 
     plt.show()
