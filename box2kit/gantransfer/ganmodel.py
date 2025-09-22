@@ -153,7 +153,8 @@ class DiscriminatorV2(nn.Module):
         # Flatten convolution outputs
         h_flat = h.reshape(h.shape[0], self.nkernels[-1]*(self.input_dims[1]//np.prod(self.strides)))
 
-        score = self.sigmoid(self.conv2score(h_flat))
+        # score = self.sigmoid(self.conv2score(h_flat))
+        score = self.conv2score(h_flat)
         return score
 
 
@@ -360,7 +361,7 @@ class DACGANV2(pl.LightningModule):
                  lambda_adversarial: float = 1,
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
                  spectral_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
-                 mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
+                 mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None], loss_fn=nn.MSELoss()),
                  warmup: int = 250):
         super().__init__()
 
@@ -371,7 +372,7 @@ class DACGANV2(pl.LightningModule):
         self.spectral_loss_fn = spectral_loss_fn
         self.mel_loss_fn = mel_loss_fn
         self.embedding_loss_fn = nn.MSELoss()
-        self.adversarial_loss_fn = nn.BCELoss()
+        self.adversarial_loss_fn = hinge_loss()
 
         self.lambda_embedding = lambda_embedding
         self.lambda_adversarial = lambda_adversarial
@@ -387,7 +388,7 @@ class DACGANV2(pl.LightningModule):
         self.automatic_optimization = False
 
         self.real_label = 1
-        self.fake_label = 0
+        self.fake_label = -1
 
         self.codec.eval()
         self.codec.requires_grad_(False)
@@ -429,14 +430,16 @@ class DACGANV2(pl.LightningModule):
         gen_AS = AudioSignal(gen, self.sr)
         target_AS = AudioSignal(target_post, self.sr)
 
-        spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
+        # spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
+        spectral_loss = self.mel_loss_fn(gen_AS, target_AS)
         embedding_loss = self.embedding_loss_fn(Z_gen, Z_target)
 
         if self.adversarial_phase:
             gen_score = self.discriminator(stft_gen)
             real_labels = torch.full_like(gen_score, fill_value=self.real_label)
-            # how convinced the discriminator is that generated waveforms are real
-            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
+            # # how convinced the discriminator is that generated waveforms are real
+            # adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels) # bce loss
+            adversarial_loss = torch.mean(gen_score) # hinge loss
 
         else:
             adversarial_loss = 0
@@ -471,7 +474,25 @@ class DACGANV2(pl.LightningModule):
         self.log("adversarial_loss", adversarial_loss, prog_bar=True, logger=True)
     
     def validation_step(self, batch):
-        pass
+        input_waveforms = batch
+        target, output = input_waveforms
+
+        with torch.no_grad():
+            Z_target = self.codec.encode(target)[0]
+            Z_output = self.codec.encode(output)[0]
+        
+        Z_gen = self.generator(Z_target)
+
+        with torch.no_grad():
+            gen = self.codec.decode(Z_gen)
+            output_post = self.code.decode(Z_output)
+
+        gen_AS = AudioSignal(gen, self.sr)
+        output_AS = AudioSignal(output_post, self.sr)
+
+        val_loss = self.mel_loss_fn(gen_AS, output_AS)
+
+        self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
     def configure_optimizers(self):
         gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))
@@ -482,6 +503,7 @@ class DACGANV2(pl.LightningModule):
         self.codec.eval()
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
         if self.adversarial_phase:
+            # freeze encoder parameters
             self.generator.outer2hid.requires_grad_ = False
             self.generator.hid2mu_inner.requires_grad_ = False
             self.generator.hid2sigma_inner.requires_grad_ = False
@@ -502,6 +524,12 @@ def get_padding(kernel_size, stride=1, dilation=1):
     pad_left = pad_total // 2
     pad_right = pad_total - pad_left
     return (pad_left, pad_right)
+
+def hinge_loss(score, label):
+    if label > 0:
+        return torch.min(0, label - score)
+    else:
+        return torch.min(0, -label + score)
 
 if __name__ == "__main__":
     x = torch.randn(4, 1024, 10000)
