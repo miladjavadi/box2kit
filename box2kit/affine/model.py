@@ -9,6 +9,7 @@ from torch import optim
 from pytorch_lightning.callbacks import Callback
 import torchaudio
 from box2kit.utils.load_data import load_mono, reshape_data
+from box2kit.utils.constants import DAC_SILENCE
 import os
 import numpy as np
 import sklearn
@@ -226,7 +227,12 @@ class AffineTransfer():
         self.estimator = LinearRegression()
         self.is_fitted = False
     
-    def fit(self, targets, outputs, n_trials = 100, threshold = 10, n_samples = 256):
+    def fit(self, targets, outputs, n_trials = 100, threshold = 10, n_samples = 256, trim_silence = True, gate_threshold = 140):
+        if trim_silence:
+            mask = np.linalg.vector_norm(targets - np.asarray(DAC_SILENCE).reshape(1, -1), dim=0) > gate_threshold
+            targets = targets[mask]
+            outputs = outputs[mask]
+
         n_points = targets.shape[0]
 
         bestimator = self.estimator
