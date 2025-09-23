@@ -24,14 +24,12 @@ def main(args):
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     model_sr = codec.sample_rate
-    print(model_sr)
 
-    segment_length_in_samples = int(model_sr*4/(SUBDIV*TEMPO))
+    segment_length_in_samples = int(model_sr*4*60/(SUBDIV*TEMPO))
 
     with torch.inference_mode():
         target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
         target_segs = uload.reshape_data(target_waves, segment_length_in_samples).to(DEVICE)
-        print(target_segs.shape)
         target_latent_segs = uload.safe_encode(target_segs, codec, BATCH_SIZE)
         target_vecs = target_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
