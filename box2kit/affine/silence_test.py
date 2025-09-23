@@ -16,7 +16,7 @@ codec = dac.DAC.load(dac.utils.download()).to("cuda")
 # test_audio = codec.decode(-latents)
 
 # zeros = torch.zeros(1,1024,2000).to("cuda")
-noisy_silence = (torch.tensor(DAC_SILENCE) + torch.randn(1,1024,1000)).to("cuda")
+noisy_silence = (torch.tensor(DAC_SILENCE).view(1, -1, 1) + torch.randn(1,1024,1000)).to("cuda")
 # noise = codec.quantizer(noisy_silence)[0]
 test_audio = codec.decode(noisy_silence)
 
