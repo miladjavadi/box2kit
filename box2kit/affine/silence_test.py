@@ -19,7 +19,7 @@ codec = dac.DAC.load(dac.utils.download()).to("cuda")
 silence = torch.zeros(1,1,2*codec.sample_rate).to("cuda")
 
 latents = codec.encode(silence)[0]
-torch.set_printoptions(profile="full")
+torch.set_printoptions(threshold=10_000)
 print(torch.mean(latents, dim=-1))
 test_audio = codec.decode(latents)
 torchaudio.save("outs/radio_silence.wav", test_audio[0].cpu().detach(), codec.sample_rate)
