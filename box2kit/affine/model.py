@@ -248,7 +248,8 @@ class AffineTransfer():
             approximations = model.predict(targets)
             residuals = approximations - outputs
             distances = np.linalg.norm(residuals, axis=0)
-            print(np.mean(distances))
+            print("Mean dists:", np.mean(distances))
+            print("Var dists:", np.var(distances))
             score = np.count_nonzero(np.less(distances, threshold))/n_points
 
             if score > best_score:

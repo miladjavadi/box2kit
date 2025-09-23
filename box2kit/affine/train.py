@@ -2,6 +2,7 @@ import torch
 import dac
 import argparse
 import pickle as pkl
+import numpy as np
 
 from box2kit.utils import load_data as uload
 from box2kit.affine.model import AffineTransfer
@@ -28,12 +29,12 @@ def main(args):
 
     with torch.inference_mode():
         target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
-        target_segs = uload.reshape_data(target_waves, segment_length_in_samples)
+        target_segs = uload.reshape_data(target_waves, segment_length_in_samples).to(DEVICE)
         target_latent_segs = uload.safe_encode(target_segs, codec, BATCH_SIZE)
         target_vecs = target_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
         output_waves, _ = uload.load_dir(OUTPUT_DIR, model_sr)
-        output_segs = uload.reshape_data(output_waves, segment_length_in_samples)
+        output_segs = uload.reshape_data(output_waves, segment_length_in_samples).to(DEVICE)
         output_latent_segs = uload.safe_encode(output_segs, codec, BATCH_SIZE)
         output_vecs = output_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
