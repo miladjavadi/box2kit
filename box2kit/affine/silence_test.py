@@ -23,6 +23,7 @@ latents = codec.encode(load_mono("training_data/beatbox/8.wav", codec.sample_rat
 mask = torch.linalg.vector_norm(latents-torch.tensor(DAC_SILENCE).view(1, -1, 1).to("cuda"), dim=-1)[0] > 100
 
 trunc_latents = latents[:,:,mask]
+print(trunc_latents.shape[-1]/latents.shape[-1])
 
 test_audio = codec.decode(trunc_latents)
 
