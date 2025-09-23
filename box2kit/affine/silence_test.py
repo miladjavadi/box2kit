@@ -11,16 +11,22 @@ codec = dac.DAC.load(dac.utils.download()).to("cuda")
 # noise = codec.quantizer(noise)[0]
 # test_audio = codec.decode(noise)
 
-# latents = codec.encode(load_mono("training_data/drum_kit/1.wav", codec.sample_rate).unsqueeze(0).to("cuda")[:,:,:int(4*codec.sample_rate)])[0]
+latents = codec.encode(load_mono("training_data/beatbox/8.wav", codec.sample_rate).unsqueeze(0).to("cuda")[:,:,:int(4*codec.sample_rate)])[0]
 # latents = codec.quantizer(latents)[0]
 # test_audio = codec.decode(-latents)
 
 # zeros = torch.zeros(1,1024,2000).to("cuda")
-noisy_silence = (torch.tensor(DAC_SILENCE).view(1, -1, 1) + 25*torch.randn(1,1024,1000)).to("cuda")
+# noisy_silence = (torch.tensor(DAC_SILENCE).view(1, -1, 1) + 25*torch.randn(1,1024,1000)).to("cuda")
 # noise = codec.quantizer(noisy_silence)[0]
-test_audio = codec.decode(noisy_silence)
+# test_audio = codec.decode(noisy_silence)
 
-torchaudio.save("outs/noisy_silence.wav", test_audio[0].cpu().detach(), codec.sample_rate)
+mask = torch.linalg.vector_norm(latents-torch.tensor(DAC_SILENCE).view(1, -1, 1).to("cuda"), dim=-1) > 10
+
+trunc_latents = latents[:,mask]
+
+test_audio = codec.decode(trunc_latents)
+
+torchaudio.save("outs/trunc_drums.wav", test_audio[0].cpu().detach(), codec.sample_rate)
 
 # silence = torch.zeros(1,1,2*codec.sample_rate).to("cuda")
 
