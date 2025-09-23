@@ -5,7 +5,7 @@ import torch
 codec = dac.DAC.load(dac.utils.download()).to("cuda")
 
 # zeros = torch.zeros(1,1024,2000).to("cuda")
-noise = 25*torch.randn(1,1024,1000).to("cuda")
+noise = 10*torch.randn(1,1024,1000).to("cuda")
 # noise = codec.quantizer(noise)[0]
 test_audio = codec.decode(noise)
 
