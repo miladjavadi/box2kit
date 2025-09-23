@@ -26,6 +26,7 @@ def main(args):
     model_sr = codec.sample_rate
 
     segment_length_in_samples = int(model_sr*4/(SUBDIV*TEMPO))
+    print(segment_length_in_samples)
 
     with torch.inference_mode():
         target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
