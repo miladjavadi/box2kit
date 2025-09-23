@@ -41,7 +41,7 @@ def main(args):
         gen_model = AffineTransfer(1024)
         gen_model.fit(target_vecs, output_vecs, N_TRIALS, INL_THRESHOLD, N_SAMPLES)
 
-    with open(f"{EXP_NAME}.pkl", 'w') as file:
+    with open(f"{EXP_NAME}.pkl", 'wb') as file:
         pkl.dump(gen_model, file)
 
 if __name__ == "__main__":
