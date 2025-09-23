@@ -2,6 +2,7 @@ import dac
 import torchaudio
 import torch
 from box2kit.utils.load_data import load_mono
+from box2kit.utils.constants import DAC_SILENCE
 
 codec = dac.DAC.load(dac.utils.download()).to("cuda")
 
@@ -14,12 +15,17 @@ codec = dac.DAC.load(dac.utils.download()).to("cuda")
 # latents = codec.quantizer(latents)[0]
 # test_audio = codec.decode(-latents)
 
-# torchaudio.save("outs/anti_drums.wav", test_audio[0].cpu().detach(), codec.sample_rate)
+# zeros = torch.zeros(1,1024,2000).to("cuda")
+noisy_silence = (torch.tensor(DAC_SILENCE) + torch.randn(1,1024,1000)).to("cuda")
+# noise = codec.quantizer(noisy_silence)[0]
+test_audio = codec.decode(noisy_silence)
 
-silence = torch.zeros(1,1,2*codec.sample_rate).to("cuda")
+torchaudio.save("outs/noisy_silence.wav", test_audio[0].cpu().detach(), codec.sample_rate)
 
-latents = codec.encode(silence)[0]
-torch.set_printoptions(threshold=10_000)
-print(torch.mean(latents, dim=-1))
-test_audio = codec.decode(latents)
-torchaudio.save("outs/radio_silence.wav", test_audio[0].cpu().detach(), codec.sample_rate)
+# silence = torch.zeros(1,1,2*codec.sample_rate).to("cuda")
+
+# latents = codec.encode(silence)[0]
+# torch.set_printoptions(threshold=10_000)
+# print(torch.mean(latents, dim=-1))
+# test_audio = codec.decode(latents)
+# torchaudio.save("outs/radio_silence.wav", test_audio[0].cpu().detach(), codec.sample_rate)
