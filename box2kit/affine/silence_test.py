@@ -11,6 +11,7 @@ codec = dac.DAC.load(dac.utils.download()).to("cuda")
 # test_audio = codec.decode(noise)
 
 latents = codec.encode(load_mono("training_data/drum_kit/1.wav", codec.sample_rate).unsqueeze(0).to("cuda")[:,:,:int(4*codec.sample_rate)])[0]
+latents = codec.quantizer(latents)[0]
 test_audio = codec.decode(-latents)
 
 torchaudio.save("outs/anti_drums.wav", test_audio[0].cpu().detach(), codec.sample_rate)
