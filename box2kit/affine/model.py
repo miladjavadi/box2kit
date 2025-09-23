@@ -229,7 +229,7 @@ class AffineTransfer():
     
     def fit(self, targets, outputs, n_trials = 100, threshold = 10, n_samples = 256, trim_silence = True, gate_threshold = 140):
         if trim_silence:
-            mask = np.linalg.norm(targets - np.asarray(DAC_SILENCE).reshape(1, -1), dim=0) > gate_threshold
+            mask = np.linalg.norm(targets - np.asarray(DAC_SILENCE).reshape(1, -1), axis=0) > gate_threshold
             targets = targets[mask]
             outputs = outputs[mask]
 
