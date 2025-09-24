@@ -372,7 +372,7 @@ class DACGANV2(pl.LightningModule):
         self.spectral_loss_fn = spectral_loss_fn
         self.mel_loss_fn = mel_loss_fn
         self.embedding_loss_fn = nn.MSELoss()
-        self.adversarial_loss_fn = hinge_loss()
+        self.adversarial_loss_fn = hinge_loss
 
         self.lambda_embedding = lambda_embedding
         self.lambda_adversarial = lambda_adversarial
@@ -405,34 +405,34 @@ class DACGANV2(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         input_waveforms = batch
-        query, target = input_waveforms
+        x, y = input_waveforms
 
         gen_optimizer, discr_optimizer = self.optimizers()
 
         with torch.no_grad():
-            Z_query = self.codec.encode(query)[0]
-            Z_target = self.codec.encode(target)[0]
+            target_latents = self.codec.encode(x)[0]
+            output_latents = self.codec.encode(y)[0]
 
         # train generator
         self.toggle_optimizer(gen_optimizer)
 
-        Z_gen = self.generator(Z_query)
+        gen_latents = self.generator(target_latents)
 
         with torch.no_grad():
-            gen = self.codec.decode(Z_gen)
-            target_post = self.codec.decode(Z_target) # use post-dac target to match dims
-            stft_gen = torch.stft(gen.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=gen.device), return_complex=True).abs()
-            stft_target = torch.stft(target_post.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=target_post.device), return_complex=True).abs()
+            gen_output = self.codec.decode(gen_latents)
+            output_post = self.codec.decode(output_latents) # use post-dac target to match dims
+            stft_gen = torch.stft(gen_output.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=gen_output.device), return_complex=True).abs()
+            stft_output = torch.stft(output_post.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=output_post.device), return_complex=True).abs()
         
         # calculate generator losses
         gen_optimizer.zero_grad()
 
-        gen_AS = AudioSignal(gen, self.sr)
-        target_AS = AudioSignal(target_post, self.sr)
+        gen_AS = AudioSignal(gen_output, self.sr)
+        output_AS = AudioSignal(output_post, self.sr)
 
         # spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
-        spectral_loss = self.mel_loss_fn(gen_AS, target_AS)
-        embedding_loss = self.embedding_loss_fn(Z_gen, Z_target)
+        spectral_loss = self.mel_loss_fn(gen_AS, output_AS)
+        embedding_loss = self.embedding_loss_fn(gen_latents, output_latents)
 
         if self.adversarial_phase:
             gen_score = self.discriminator(stft_gen)
@@ -454,7 +454,7 @@ class DACGANV2(pl.LightningModule):
             self.toggle_optimizer(discr_optimizer)
             discr_optimizer.zero_grad()
             # how convinced the discriminator is that target waveforms are real, and generated waveforms are fake
-            real_score = self.discriminator(stft_target)
+            real_score = self.discriminator(stft_output)
             gen_score = self.discriminator(stft_gen.detach())
 
             real_labels = torch.full_like(real_score, fill_value=self.real_label)

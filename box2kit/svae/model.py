@@ -279,7 +279,7 @@ class TransferGAN(LightningVAE):
         self.adversarial_phase = False
         self.real_label = 1
         self.fake_label = 0
-        self.adversarial_loss_fn = torch.nn.BCELoss()
+        self.adversarial_loss_fn = hinge_loss
         self.warmup = warmup
 
         self.automatic_optimization = False
@@ -306,9 +306,10 @@ class TransferGAN(LightningVAE):
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
             gen_score = self.discriminator(stft_gen)
-            real_labels = torch.full_like(gen_score, fill_value=self.real_label)
-            # how convinced the discriminator is that generated waveforms are real
-            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
+            # real_labels = torch.full_like(gen_score, fill_value=self.real_label)
+            # # how convinced the discriminator is that generated waveforms are real
+            # adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
+            adversarial_loss = torch.mean(gen_score)
 
         else:
             adversarial_loss = 0
@@ -796,6 +797,12 @@ def fft_convolve(signal, kernel):
     output = output[..., output.shape[-1] // 2:]
 
     return output
+
+def hinge_loss(score, label):
+    if label > 0:
+        return torch.mean(torch.min(0, label - score))
+    else:
+        return torch.mean(torch.min(0, -label + score))
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)
