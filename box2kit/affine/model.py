@@ -260,6 +260,7 @@ class AffineTransfer():
 
             if score > best_score:
                 bestimator = model
+                best_score = score
                 self.is_fitted = True
         
         self.estimator = bestimator
