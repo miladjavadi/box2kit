@@ -45,7 +45,7 @@ if __name__ == "__main__":
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
 
-    parser.add_argument("--input", help="Location of input audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("--target", help="Location of input audio files.", type=str, metavar="path", required=True)
     parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
     parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
