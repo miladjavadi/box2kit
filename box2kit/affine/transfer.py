@@ -22,7 +22,7 @@ def main(args):
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     model_sr = codec.sample_rate
 
-    with open(MODEL_PATH, "r") as file:
+    with open(MODEL_PATH, "rb") as file:
         gen_model = pkl.load(file)
     
     # segment_length_in_samples = int(model_sr*4/(SUBDIV*TEMPO))
@@ -36,9 +36,9 @@ def main(args):
             input_vecs = codec.encode(input_wave.to(DEVICE))[0].transpose(1,2).reshape(-1,1024).cpu().numpy()
             transformed_vecs = gen_model(input_vecs)
             transformed_latents = torch.tensor(np.transpose(transformed_vecs)).reshape(1, 1024, -1).to(DEVICE)
-            output_wave = codec.decode(output_wave).reshape(1,-1)
+            output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
-            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.cpu().numpy())
+            torchaudio.save(f"{uload.mkdir(OUTPUT_DIR)}/{file_name}", output_wave.cpu().numpy())
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
