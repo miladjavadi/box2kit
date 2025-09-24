@@ -41,7 +41,7 @@ def main(args):
 
             if requantize:
                 transformed_latents = codec.quantizer(transformed_latents)[0]
-                
+
             output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
             torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.detach().cpu(), model_sr)
@@ -54,6 +54,6 @@ if __name__ == "__main__":
     parser.add_argument("--target", help="Location of input audio files.", type=str, metavar="path", required=True)
     parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
     parser.add_argument("--ckpt", help="Path to trained affine transformation.", type=str, metavar="path", required=True)
-    parser.add_argument("--rq" help="Requantize generated latent sequence", action="store_true")
+    parser.add_argument("--rq", help="Requantize generated latent sequence", action="store_true")
     args = parser.parse_args()
     main(args)
