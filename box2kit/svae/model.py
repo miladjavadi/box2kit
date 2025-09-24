@@ -296,7 +296,7 @@ class TransferGAN(LightningVAE):
 
         # generator losses
         y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
-        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) + self.full_stft_loss_fn(y_hat_AS, y_AS)
+        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) # + self.full_stft_loss_fn(y_hat_AS, y_AS)
 
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
@@ -358,6 +358,18 @@ class TransferGAN(LightningVAE):
             self.model.hid2sigma.requires_grad_ = False
             self.model.prior.requires_grad_ = False
         return super().on_train_epoch_start()
+    
+    def validation_step(self, batch):
+        x, y = batch
+
+        y_hat, mu, sigma = self.model(x)
+        y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+
+        # generator losses
+        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
+        val_loss = self.mel_loss_fn(y_hat_AS, y_AS)
+
+        self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
     def configure_optimizers(self):
         gen_optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
