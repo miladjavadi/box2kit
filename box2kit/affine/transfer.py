@@ -32,7 +32,7 @@ def main(args):
     uload.mkdir(OUTPUT_DIR)
     
     with torch.inference_mode():
-        for input_wave, file_name in input_waves, file_names:
+        for input_wave, file_name in zip(input_waves, file_names):
             input_vecs = codec.encode(input_wave.to(DEVICE))[0].transpose(1,2).reshape(-1,1024).cpu().numpy()
             transformed_vecs = gen_model(input_vecs)
             transformed_latents = torch.tensor(np.transpose(transformed_vecs)).reshape(1, 1024, -1).to(DEVICE)
