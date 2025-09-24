@@ -33,12 +33,12 @@ def main(args):
     
     with torch.inference_mode():
         for input_wave, file_name in zip(input_waves, file_names):
-            input_vecs = codec.encode(input_wave.to(DEVICE))[0].transpose(1,2).reshape(-1,1024).cpu().numpy()
+            input_vecs = codec.encode(input_wave.to(DEVICE).unsqueeze(0))[0].transpose(1,2).reshape(-1,1024).cpu().numpy()
             transformed_vecs = gen_model(input_vecs)
             transformed_latents = torch.tensor(np.transpose(transformed_vecs)).reshape(1, 1024, -1).to(DEVICE)
             output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
-            torchaudio.save(f"{uload.mkdir(OUTPUT_DIR)}/{file_name}", output_wave.cpu().numpy())
+            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.cpu().numpy())
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
