@@ -38,7 +38,7 @@ def main(args):
             transformed_latents = torch.tensor(np.transpose(transformed_vecs)).reshape(1, 1024, -1).to(DEVICE)
             output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
-            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.cpu().numpy())
+            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.cpu().numpy(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
