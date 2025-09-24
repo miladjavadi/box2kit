@@ -19,6 +19,8 @@ def main(args):
     INPUT_DIR = args.target
     OUTPUT_DIR = args.output
 
+    requantize = args.rq
+
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     model_sr = codec.sample_rate
 
@@ -36,6 +38,10 @@ def main(args):
             input_vecs = codec.encode(input_wave.to(DEVICE).unsqueeze(0))[0].transpose(1,2).reshape(-1,1024).cpu().numpy()
             transformed_vecs = gen_model(input_vecs)
             transformed_latents = torch.tensor(np.transpose(transformed_vecs)).reshape(1, 1024, -1).to(DEVICE)
+
+            if requantize:
+                transformed_latents = codec.quantizer(transformed_latents)[0]
+                
             output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
             torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.detach().cpu(), model_sr)
@@ -47,9 +53,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--target", help="Location of input audio files.", type=str, metavar="path", required=True)
     parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
-    parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
-    parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
-    parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
     parser.add_argument("--ckpt", help="Path to trained affine transformation.", type=str, metavar="path", required=True)
+    parser.add_argument("--rq" help="Requantize generated latent sequence", action="store_true")
     args = parser.parse_args()
     main(args)
