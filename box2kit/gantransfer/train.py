@@ -163,6 +163,8 @@ def main(args):
 
     dataloader = prepare_dataloader(target_dir, output_dir, block_length_in_samples, batch_size, model_sr, device)
 
+    val_loader = None
+
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
@@ -175,7 +177,9 @@ def main(args):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")
+    checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
+
+    checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
     logger = CSVLogger(save_dir="neural_logs", name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=10, check_finite=True), checkpoint_callback]) # type: ignore
 
