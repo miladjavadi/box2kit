@@ -7,7 +7,7 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import pytorch_lightning as pl
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch import Trainer
 import yaml
 
@@ -173,8 +173,8 @@ def main(args):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
-    tblogger = TensorBoardLogger(save_dir="neural_logs", name=experiment_name)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=tblogger) # type: ignore
+    logger = CSVLogger(save_dir="neural_logs", name=experiment_name)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger) # type: ignore
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
