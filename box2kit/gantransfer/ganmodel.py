@@ -26,6 +26,10 @@ class Generator(nn.Module):
             nn.Conv1d(256, 64, kernel_size=5, padding="same"),
             # nn.BatchNorm1d(64),
             nn.LeakyReLU(),
+            nn.Conv1d(64, 32, kernel_size=7, padding="same"),
+            nn.LeakyReLU(),
+            nn.Conv1d(32, 64, kernel_size=7, padding="same"),
+            nn.LeakyReLU(),
             # nn.ZeroPad1d(get_padding(5, 2)),
             nn.Conv1d(64, 256, kernel_size=5, padding="same"),
             # nn.BatchNorm1d(256),
@@ -57,14 +61,16 @@ class Generator(nn.Module):
     def decode(self, inner):
         return self.inner2outer(inner)
 
-    def forward(self, outer):
-        mu, sigma = self.encode(input)
-        epsilon = torch.randn_like(sigma)
+    def forward(self, z):
+        # mu, sigma = self.encode(input)
+        # epsilon = torch.randn_like(sigma)
 
-        inner_reparam = mu + sigma*epsilon
-        outer_hat = self.decode(inner_reparam)
+        # inner_reparam = mu + sigma*epsilon
+        # outer_hat = self.decode(inner_reparam)
 
-        return outer_hat
+        # return outer_hat
+
+        return self.main(z)
     
 ### DISCRIMINATOR
 
