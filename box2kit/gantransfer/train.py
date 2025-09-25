@@ -138,8 +138,8 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
     return checkpoint
 
 def main(args):
-    query_dir = args.querydir
-    target_dir = args.targetdir
+    target_dir = args.target
+    output_dir = args.out
     tempo = args.tempo
     subdivs = args.subdiv
     batch_size = args.batchsize
@@ -159,7 +159,7 @@ def main(args):
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    dataloader = prepare_dataloader(query_dir, target_dir, block_length_in_samples, batch_size, model_sr, device)
+    dataloader = prepare_dataloader(target_dir, output_dir, block_length_in_samples, batch_size, model_sr, device)
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
@@ -185,10 +185,10 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
-    "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
+    "For instance: <target>/x.wav should have a corresponding <out>/x.wav.")
 
-    parser.add_argument("--querydir", help="Location of query audio files.", type=str, metavar="path", required=True)
-    parser.add_argument("--targetdir", help="Location of target audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("--target", help="Location of target audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("--out", help="Location of output audio files.", type=str, metavar="path", required=True)
     parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
     parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
     parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
