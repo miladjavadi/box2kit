@@ -534,10 +534,11 @@ def get_padding(kernel_size, stride=1, dilation=1):
     return (pad_left, pad_right)
 
 def hinge_loss(score: torch.Tensor, label: float):
+    zeros = torch.zeros_like(score)
     if label > 0:
-        return torch.min(0, label - score)
+        return torch.mean(torch.min(zeros, label - score))
     else:
-        return torch.min(0, -label + score)
+        return torch.mean(torch.min(zeros, -label + score))
 
 if __name__ == "__main__":
     x = torch.randn(4, 1024, 10000)
