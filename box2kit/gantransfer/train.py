@@ -7,10 +7,10 @@ import torch.optim as optim
 import torch.utils.data
 import numpy as np
 import pytorch_lightning as pl
-from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
-from lightning.pytorch import Trainer
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint
 import yaml
 
 import dac
