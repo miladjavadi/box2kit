@@ -178,6 +178,7 @@ def main(args):
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
     checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
+    print(checkpoint_monitor)
 
     checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
     logger = CSVLogger(save_dir="neural_logs", name=experiment_name)
