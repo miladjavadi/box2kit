@@ -463,10 +463,12 @@ class DACGANV2(pl.LightningModule):
             real_score = self.discriminator(stft_output)
             gen_score = self.discriminator(stft_gen.detach())
 
-            real_labels = torch.full_like(real_score, fill_value=self.real_label)
-            fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
+            # real_labels = torch.full_like(real_score, fill_value=self.real_label)
+            # fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
 
-            discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
+            # discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
+
+            discr_loss = self.adversarial_loss_fn(real_score, self.real_label) + self.adversarial_loss_fn(gen_score, self.fake_label)
             self.manual_backward(discr_loss)
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)
@@ -531,7 +533,7 @@ def get_padding(kernel_size, stride=1, dilation=1):
     pad_right = pad_total - pad_left
     return (pad_left, pad_right)
 
-def hinge_loss(score, label):
+def hinge_loss(score: torch.Tensor, label: float):
     if label > 0:
         return torch.min(0, label - score)
     else:

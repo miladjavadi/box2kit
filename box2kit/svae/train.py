@@ -14,7 +14,9 @@ import math
 import os
 from box2kit.svae.rave_pqmf import PQMF
 import pytorch_lightning as pl
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,8 +62,9 @@ def main(args):
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
 
-    tblogger = TensorBoardLogger(save_dir="svae_logs", name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, callbacks=GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ), logger=tblogger)
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")
+    logger = CSVLogger(save_dir="neural_logs", name=EXPERIMENT_NAME)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=10, check_finite=True), checkpoint_callback, GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, ckpt_path=ckpt)
 
         
