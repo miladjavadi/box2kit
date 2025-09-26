@@ -465,7 +465,7 @@ class PQMFVAE(nn.Module):
         h = self.z2hid(z)
         x_wav, x_loud, x_noise = self.hid2wave(h), self.hid2loud(h), self.hid2noise(h)
 
-        x_mb = x_wav * x_loud + x_noise
+        x_mb = x_wav * x_loud# + x_noise
         x_hat = self.pqmf.inverse(x_mb)
         return x_hat
     
