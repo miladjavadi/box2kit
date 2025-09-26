@@ -299,7 +299,7 @@ class TransferGAN(LightningVAE):
         y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
         fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) # + self.full_stft_loss_fn(y_hat_AS, y_AS)
 
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y, self.model.sr)))
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr), AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
         kl_div = torch.mean(self.model.prior(mu, sigma), dim=0)
