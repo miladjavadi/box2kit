@@ -643,6 +643,10 @@ class NoiseGenerator(nn.Module):
         self.data_size = data_size
 
     def forward(self, x):
+        remainder = x.shape[-1] % self.target_size
+        # noise synthesis will be truncated to nearest mult of self.target_size.
+        # to compensate, we first pad signal to next multiple...
+        x = critical_pad(x, self.target_size)
         amp = mod_sigmoid(self.net(x) - 5)
         amp = amp.permute(0, 2, 1)
         amp = amp.reshape(amp.shape[0], amp.shape[1], self.n_channels * self.data_size, -1)
@@ -652,6 +656,9 @@ class NoiseGenerator(nn.Module):
 
         noise = fft_convolve(noise, ir).permute(0, 2, 1, 3)
         noise = noise.reshape(noise.shape[0], noise.shape[1], -1)
+
+        # ...and at the end, re-trim it to its original length
+        noise = noise[..., :-remainder]
         return noise
 
 
