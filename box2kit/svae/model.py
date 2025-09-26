@@ -444,7 +444,6 @@ class PQMFVAE(nn.Module):
     
     def decode(self, z):
         h = self.z2hid(z)
-        print(h.shape)
         x_wav, x_loud, x_noise = self.hid2wave(h), self.hid2loud(h), self.hid2noise(h)
 
         x_mb = x_wav * x_loud + x_noise
@@ -492,7 +491,6 @@ class MOGPrior(nn.Module):
         else:
             kld = kld_component(1, 0, post_mean, post_var)
         
-        print(kld.shape)
         return kld
 
 class EncoderStack(nn.Module):
