@@ -484,6 +484,7 @@ class MOGPrior(nn.Module):
         exp_sum = torch.sum(weights.reshape(1, -1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
 
+        print(elbo.shape)
         return elbo
     
     def forward(self, post_mean, post_var):
