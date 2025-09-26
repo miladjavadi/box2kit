@@ -449,6 +449,8 @@ class PQMFVAE(nn.Module):
         x_pad = critical_pad(x, 16)
         # x_pad = x[..., :((x.shape[-1]//16)*16)]
         x_mb = self.pqmf(x_pad)
+        if torch.isnan(x_mb).any():
+            print("labubu")
         h = self.pqmf2hid(x_mb)
         mu, sigma = self.hid2mu(h), self.hid2sigma(h)
         return mu, sigma
