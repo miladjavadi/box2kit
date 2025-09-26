@@ -443,6 +443,7 @@ class PQMFVAE(nn.Module):
     
     def decode(self, z):
         h = self.z2hid(z)
+        print(h.shape)
         x_wav, x_loud, x_noise = self.hid2wave(h), self.hid2loud(h), self.hid2noise(h)
 
         x_mb = x_wav * x_loud + x_noise
