@@ -29,9 +29,9 @@ def main(args):
     TEMPO = args.bpm
     SUBDIV = args.subdiv
     TEST_FILE = args.test
-    TEST_OUT = args.out
-    TEST_FREQ = args.outfreq
-    CKPT_LOAD = args.loadckpt
+    TEST_OUT = args.testout
+    TEST_FREQ = args.testfreq
+    CKPT_LOAD = args.ckpt
     SORT_KEY = args.ckptkey
     DESCENDING = not args.asc
     EXPERIMENT_NAME = args.name
@@ -45,10 +45,10 @@ def main(args):
     # remainder = block_length % 2048
 
 
-    query_dir = args.query
     target_dir = args.target
+    output_dir = args.output
 
-    dataset = PairedWaveformDataset(query_dir, target_dir, block_length, SAMPLE_RATE)
+    dataset = PairedWaveformDataset(target_dir, output_dir, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
     # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     # model = PQMFVAE(pqmf).to(DEVICE)
@@ -77,8 +77,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
 
-    parser.add_argument("--query", help="Location of query data.", type=str, metavar="path", required=True)
     parser.add_argument("--target", help="Location of target data.", type=str, metavar="path", required=True)
+    parser.add_argument("--output", help="Location of output data.", type=str, metavar="path", required=True)
     parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
     parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
     parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
@@ -87,9 +87,9 @@ if __name__ == "__main__":
     parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
     parser.add_argument("--subdiv", help="Segments per bar", metavar="divs", type=int, default=8)
     parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
-    parser.add_argument("--out", help="Name of output test file dir", type=str, metavar="dirname", default=None)
-    parser.add_argument("--outfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
-    parser.add_argument("--loadckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
+    parser.add_argument("--testout", help="Name of output test file dir", type=str, metavar="dirname", default=None)
+    parser.add_argument("--testfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
+    parser.add_argument("--ckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
     parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
     parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
     parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
