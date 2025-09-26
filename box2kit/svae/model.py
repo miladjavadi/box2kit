@@ -429,11 +429,12 @@ class PQMFVAE(nn.Module):
                                         noise_bands=5)
         
         # prior
-        if nmog > 0:
-            self.prior = MOGPrior(zdim, nmog)
-        else:
-            self.prior = None
-    
+        # if nmog > 0:
+        #     self.prior = MOGPrior(zdim, nmog)
+        # else:
+        #     self.prior = None
+        self.prior = MOGPrior(zdim, nmog)
+
     def encode(self, x):
         x_pad = critical_pad(x, 16)
         x_mb = self.pqmf(x_pad)
