@@ -787,7 +787,7 @@ def fft_convolve(signal, kernel):
     """
     convolves signal by kernel on the last dimension
 
-    Copied from IRCAM ACID'S RAVE:
+    Copied from IRCAM ACIDS' RAVE:
     https://github.com/acids-ircam/RAVE/blob/master/rave/core.py
     """
     signal = nn.functional.pad(signal, (0, signal.shape[-1]))
@@ -798,11 +798,12 @@ def fft_convolve(signal, kernel):
 
     return output
 
-def hinge_loss(score, label):
+def hinge_loss(score: torch.Tensor, label: float):
+    zeros = torch.zeros_like(score)
     if label > 0:
-        return torch.mean(torch.min(0, label - score))
+        return torch.mean(torch.min(zeros, label - score))
     else:
-        return torch.mean(torch.min(0, -label + score))
+        return torch.mean(torch.min(zeros, -label + score))
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)

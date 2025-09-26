@@ -37,7 +37,7 @@ def main(args):
 
     for input_waveform, file_name in input_waveforms, file_names:
         # trim waveform to whole number of block lengths
-        input_waveform = input_waveform[:,:((input_waveform.shape[1]//block_length_in_samples)*block_length_in_samples)]
+        input_waveform = input_waveform[:,:((input_waveform.shape[1]//block_length_in_samples)*block_length_in_samples)].to(device)
 
         # reshape waveform into blocks
         input_blocks = torch.reshape(input_waveform, (-1, block_length_in_samples))
