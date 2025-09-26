@@ -299,10 +299,10 @@ class TransferGAN(LightningVAE):
         y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
         fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) # + self.full_stft_loss_fn(y_hat_AS, y_AS)
 
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
+        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y, self.model.sr)))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = torch.mean(self.model.prior(mu, sigma), 0)
+        kl_div = torch.mean(self.model.prior(mu, sigma), dim=0)
 
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
@@ -435,7 +435,8 @@ class PQMFVAE(nn.Module):
             self.prior = None
     
     def encode(self, x):
-        x_mb = self.pqmf(x)
+        x_pad = critical_pad(x, 16)
+        x_mb = self.pqmf(x_pad)
         h = self.pqmf2hid(x_mb)
         mu, sigma = self.hid2mu(h), self.hid2sigma(h)
         return mu, sigma
@@ -805,6 +806,14 @@ def hinge_loss(score: torch.Tensor, label: float):
         return torch.mean(torch.min(zeros, label - score))
     else:
         return torch.mean(torch.min(zeros, -label + score))
+    
+def critical_pad(signal: torch.Tensor, divisor: int):
+    """
+    zero-pads the last dim of a signal such that its total length is perfectly divisible by an integer divisor.
+    good for making signals of arbitrary lengths compatible with critically sampled filterbanks, such as pqmf.
+    """
+
+    return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
 
 if __name__ == "__main__":
     x = torch.randn(4, 1, 49153)
