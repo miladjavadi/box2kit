@@ -643,7 +643,7 @@ class NoiseGenerator(nn.Module):
         self.data_size = data_size
 
     def forward(self, x):
-        remainder = x.shape[-1] % self.target_size
+        in_len = x.shape[-1]
         # noise synthesis will be truncated to nearest mult of self.target_size.
         # to compensate, we first pad signal to next multiple...
         x = critical_pad(x, self.target_size)
@@ -658,7 +658,7 @@ class NoiseGenerator(nn.Module):
         noise = noise.reshape(noise.shape[0], noise.shape[1], -1)
 
         # ...and at the end, re-trim it to its original length
-        noise = noise[..., :-remainder]
+        noise = noise[..., :in_len]
         return noise
 
 
