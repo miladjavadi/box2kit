@@ -634,7 +634,7 @@ class NoiseGenerator(nn.Module):
                     stride=r,
                 ))
             if i != len(strides) - 1:
-                net.append(activation())
+                net.append(activation)
 
         self.net = nn.Sequential(*net)
         self.data_size = data_size
