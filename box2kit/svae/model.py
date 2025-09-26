@@ -253,7 +253,7 @@ class TransferGAN(LightningVAE):
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
                  nmog: int = 0,
-                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None]),
+                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0,0,0,0,0,0,0], mel_fmax=[None,None,None,None,None,None,None]),
                  full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4,
