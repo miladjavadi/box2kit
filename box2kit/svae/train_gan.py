@@ -18,6 +18,8 @@ from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+### CURRENT
+
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SAMPLE_RATE = 44100
@@ -52,6 +54,8 @@ def main(args):
 
     dataset = PairedWaveformDataset(target_dir, output_dir, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+    val_loader = None
     # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     # model = PQMFVAE(pqmf).to(DEVICE)
     # optimizer = optim.Adam(model.parameters(), lr=LR)
@@ -71,9 +75,11 @@ def main(args):
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
 
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")
+    checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
+
+    checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
     logger = CSVLogger(save_dir="neural_logs", name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=10, check_finite=True), checkpoint_callback, GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]) # type: ignore
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=[EarlyStopping(monitor=checkpoint_monitor, mode="min", patience=10, check_finite=True), checkpoint_callback, GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, ckpt_path=ckpt)
 
         
