@@ -14,7 +14,7 @@ from box2kit.gantransfer.ganmodel import DiscriminatorV2
 import os
 
 class WaveSegmentDataset(torch.utils.data.Dataset):
-    def __init__(self, dir, segment_length, sr=44100):
+    def __init__(self, dir, segment_length, sr=48000):
         self.waves = reshape_data(load_dir(dir, sr), segment_length)
         self.sr = sr
 
@@ -25,7 +25,7 @@ class WaveSegmentDataset(torch.utils.data.Dataset):
         return self.waves[idx]
 
 class PairedWaveformDataset(torch.utils.data.Dataset):
-    def __init__(self, query_dir, target_dir, segment_length, sr=44100):
+    def __init__(self, query_dir, target_dir, segment_length, sr=48000):
         # if query_data.shape != target_data.shape:
         #     raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {query_data.shape}, while target dataset has shape {target_data.shape})")
         # self.query_data = query_data
@@ -46,7 +46,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         return x, y
 
 class SingleVAE(nn.Module):
-    def __init__(self, input_dim, h_dim=200, z_dim=8, n_channels = 1, sr = 44100, n_kernels = 64):
+    def __init__(self, input_dim, h_dim=200, z_dim=8, n_channels = 1, sr = 48000, n_kernels = 64):
         super().__init__()
         self.block_length = input_dim
         self.h_dim = h_dim
@@ -117,7 +117,7 @@ class LightningVAE(pl.LightningModule):
     def __init__(self,
                  block_length: int,
                  pqmf: PQMF = PQMF(),
-                 sample_rate: int = 44100,
+                 sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
@@ -185,7 +185,7 @@ class TransferVAE(LightningVAE):
     def __init__(self,
                  block_length: int,
                  pqmf: PQMF = PQMF(),
-                 sample_rate: int = 44100,
+                 sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
@@ -245,7 +245,7 @@ class TransferGAN(LightningVAE):
                  block_length: int,
                  discriminator_dims: list[int],
                  pqmf: PQMF = PQMF(),
-                 sample_rate: int = 44100,
+                 sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
@@ -393,7 +393,7 @@ class PQMFVAE(nn.Module):
     """
     def __init__(self,
                  pqmf: PQMF = PQMF(),
-                 sample_rate: int = 44100,
+                 sample_rate: int = 48000,
                  nkernels: list[int] = [64, 128, 256, 512],
                  kernel_sizes: list[int] = [3, 3, 3, 3],
                  zdim: int = 128,
