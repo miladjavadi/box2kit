@@ -499,8 +499,9 @@ class MOGPrior(nn.Module):
     
     def kld_estimate(self, post_mean, post_var):
         weights = torch.softmax(self.weight_logits, 0)
+        print(self.means.shape, self.variances.shape, post_mean.shape, post_var.shape)
 
-        kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), -1) for (mean, var) in zip(self.means, self.variances)], 1)
+        kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), -1) for (mean, var) in zip(self.means, self.variances)])
         exp_sum = torch.sum(weights.reshape(1, -1) * torch.exp(-kld_components), 1)
         elbo = -torch.log(exp_sum)
 
@@ -510,7 +511,7 @@ class MOGPrior(nn.Module):
         if self.weight_logits is not None:
             kld = self.kld_estimate(post_mean, post_var)
         else:
-            kld = kld_component(1, 0, post_mean, post_var)
+            kld = torch.mean(kld_component(1, 0, post_mean, post_var), dim=-1)
         
         return kld
 
@@ -784,7 +785,7 @@ def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
 def kld_component(prior_mean: torch.Tensor, prior_var: torch.Tensor, post_mean: torch.Tensor, post_var: torch.Tensor):
-    return torch.mean(torch.pow(post_mean - prior_mean, 2) + torch.pow(post_var / prior_var, 2) - torch.log(torch.pow(post_var / prior_var, 2)) - 1, (-1, -2))
+    return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.pow(post_var / prior_var, 2) - torch.log(torch.pow(post_var / prior_var, 2)) - 1, (-2))
 
 def mod_sigmoid(x):
     return 2 * torch.sigmoid(x)**2.3 + 1e-7
