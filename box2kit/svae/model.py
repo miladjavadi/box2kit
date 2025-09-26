@@ -452,6 +452,8 @@ class PQMFVAE(nn.Module):
         if torch.isnan(x_mb).any():
             print("labubu")
         h = self.pqmf2hid(x_mb)
+        if torch.isnan(h).any():
+            print("blud")
         mu, sigma = self.hid2mu(h), self.hid2sigma(h)
         return mu, sigma
     
