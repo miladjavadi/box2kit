@@ -627,11 +627,11 @@ class NoiseGenerator(nn.Module):
 
         for i, r in enumerate(strides):
             net.append(
+                nn.ZeroPad1d([r, 0]),
                 nn.Conv1d(
                     channels[i],
                     channels[i + 1],
                     2 * r,
-                    padding=(r, 0),
                     stride=r,
                 ))
             if i != len(strides) - 1:
