@@ -30,7 +30,7 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         #     raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {query_data.shape}, while target dataset has shape {target_data.shape})")
         # self.query_data = query_data
         # self.target_data = target_data
-        print(type(load_dir(query_dir, sr)))
+
         self.query_data = reshape_data(load_dir(query_dir, sr)[0], segment_length)
         self.target_data = reshape_data(load_dir(target_dir, sr)[0], segment_length)
 
@@ -626,14 +626,14 @@ class NoiseGenerator(nn.Module):
         channels.append(data_size * noise_bands * n_channels)
 
         for i, r in enumerate(strides):
-            net.append(
+            net.extend([
                 nn.ZeroPad1d([r, 0]),
                 nn.Conv1d(
                     channels[i],
                     channels[i + 1],
                     2 * r,
                     stride=r,
-                ))
+                )])
             if i != len(strides) - 1:
                 net.append(activation)
 
