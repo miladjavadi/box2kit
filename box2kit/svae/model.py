@@ -296,12 +296,14 @@ class TransferGAN(LightningVAE):
 
         if torch.isnan(y_hat).any():
             print("kunt")
+        else:
+            print("the dark knight rises")
 
         if torch.isnan(mu).any():
             print("fuck")
         else:
             print("safe")
-            
+
         if torch.isnan(sigma).any():
             print("ass")
         
