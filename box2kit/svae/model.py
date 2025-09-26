@@ -31,8 +31,8 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
         # self.query_data = query_data
         # self.target_data = target_data
         print(type(load_dir(query_dir, sr)))
-        self.query_data = reshape_data(load_dir(query_dir, sr), segment_length)
-        self.target_data = reshape_data(load_dir(target_dir, sr), segment_length)
+        self.query_data = reshape_data(load_dir(query_dir, sr)[0], segment_length)
+        self.target_data = reshape_data(load_dir(target_dir, sr)[0], segment_length)
 
         if self.query_data.shape != self.target_data.shape:
             raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.query_data.shape}, while target dataset has shape {self.target_data.shape})")
