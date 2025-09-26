@@ -35,7 +35,7 @@ def main(args):
     input_waveforms, file_names = uload.load_dir(input_dir, model_sr)
     uload.mkdir(output_dir)
 
-    for input_waveform, file_name in input_waveforms, file_names:
+    for input_waveform, file_name in zip(input_waveforms, file_names):
         # trim waveform to whole number of block lengths
         input_waveform = input_waveform[:,:((input_waveform.shape[1]//block_length_in_samples)*block_length_in_samples)].to(device)
 
