@@ -18,7 +18,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SAMPLE_RATE = 48000
+SAMPLE_RATE = 44100
 
 def main(args):
     H_DIM = args.hdim
