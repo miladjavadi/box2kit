@@ -613,7 +613,7 @@ class NoiseGenerator(nn.Module):
         in_size: int,
         hidden_size: int,
         data_size: int,
-        strides: int,
+        strides: list[int],
         noise_bands: int,
         n_channels: int = 1,
         activation = nn.LeakyReLU(.2)
@@ -621,6 +621,7 @@ class NoiseGenerator(nn.Module):
         super().__init__()
         net = []
         self.n_channels = n_channels
+        self.target_size = np.prod(strides)
         channels = [in_size]
         channels.extend((len(strides) - 1) * [hidden_size])
         channels.append(data_size * noise_bands * n_channels)
