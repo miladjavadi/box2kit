@@ -78,7 +78,7 @@ def main(args):
     checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
 
     checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
-    logger = CSVLogger(save_dir="neural_logs", name=EXPERIMENT_NAME)
+    logger = CSVLogger(save_dir="w2w_logs", name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=[EarlyStopping(monitor=checkpoint_monitor, mode="min", patience=10, check_finite=True), checkpoint_callback, GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, ckpt_path=ckpt)
 

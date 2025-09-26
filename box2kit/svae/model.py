@@ -443,8 +443,8 @@ class PQMFVAE(nn.Module):
         self.prior = MOGPrior(zdim, nmog)
 
     def encode(self, x):
-        # x_pad = critical_pad(x, 16)
-        x_pad = x[..., :((x.shape[-1]//16)*16)]
+        x_pad = critical_pad(x, 16)
+        # x_pad = x[..., :((x.shape[-1]//16)*16)]
         x_mb = self.pqmf(x_pad)
         h = self.pqmf2hid(x_mb)
         mu, sigma = self.hid2mu(h), self.hid2sigma(h)
@@ -833,10 +833,11 @@ def critical_pad(signal: torch.Tensor, divisor: int):
     return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
 
 if __name__ == "__main__":
-    x = torch.randn(4, 1, 49153)
+    x = critical_pad(torch.randn(4, 1, 48004), 16)
     pqmf = PQMF()
     print(pqmf.inverse(pqmf(x)).shape)
     # vae = SingleVAE(input_dim = 4800)
     vae = PQMFVAE(pqmf)
     x_hat, mu, sigma = vae(x)
-    print(x_hat.shape, mu.shape, sigma.shape)
+    # print(x_hat.shape, mu.shape, sigma.shape)
+    print(torch.isnan(mu).any())
