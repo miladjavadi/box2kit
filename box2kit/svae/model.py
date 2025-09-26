@@ -294,8 +294,11 @@ class TransferGAN(LightningVAE):
 
         y_hat, mu, sigma = self.model(x)
 
-        if torch.isnan(mu).any() or torch.isnan(mu).any():
+        if torch.isnan(mu).any():
             print("fuck")
+
+        if torch.isnan(sigma).any():
+            print("ass")
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
