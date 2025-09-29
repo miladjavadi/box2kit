@@ -506,6 +506,8 @@ class MOGPrior(nn.Module):
         
         if torch.isnan(kld_components).any():
             print("fuck1")
+        else:
+            print("unfuck")
 
         exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
