@@ -524,7 +524,7 @@ class MOGPrior(nn.Module):
 
         # elbo = -torch.log(exp_sum)
 
-        elbo = -torch.logsumexp(log_weights.reshape(-1, 1, 1) + kld_components, dim=0)
+        elbo = -torch.logsumexp(log_weights.reshape(-1, 1, 1) - kld_components, dim=0)
 
         if torch.isnan(elbo).any() or torch.isinf(elbo).any():
             print("elbo fucked")
