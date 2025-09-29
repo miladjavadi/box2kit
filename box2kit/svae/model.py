@@ -815,7 +815,7 @@ def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
 def kld_component(prior_mean: torch.Tensor, prior_log_var: torch.Tensor, post_mean: torch.Tensor, post_log_var: torch.Tensor):
-    return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.exp(post_log_var / prior_log_var) - (post_log_var / prior_log_var) - 1, (-2))
+    return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.exp(post_log_var - prior_log_var) - (post_log_var - prior_log_var) - 1, (-2))
 
 def mod_sigmoid(x):
     return 2 * torch.sigmoid(x)**2.3 + 1e-7
