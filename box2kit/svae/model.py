@@ -518,7 +518,7 @@ class MOGPrior(nn.Module):
 
         elbo = -torch.log(exp_sum)
 
-        if torch.isnan(elbo).any():
+        if torch.isnan(elbo).any() or torch.isinf(elbo).any:
             print("elbo fucked")
         else:
             print("elbo safe")
