@@ -217,7 +217,7 @@ class TransferVAE(LightningVAE):
 
         # forward
 
-        y_hat, mu, sigma = self.model(x)
+        y_hat, mu, log_var = self.model(x)
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # losses
@@ -227,7 +227,7 @@ class TransferVAE(LightningVAE):
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = self.model.prior(mu, sigma)
+        kl_div = self.model.prior(mu, log_var)
 
         # backprop
         beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
@@ -292,7 +292,7 @@ class TransferGAN(LightningVAE):
         # train generator
         self.toggle_optimizer(gen_optimizer)
 
-        y_hat, mu, sigma = self.model(x)
+        y_hat, mu, log_var = self.model(x)
 
         if torch.isnan(y_hat).any():
             print("kunt")
@@ -304,7 +304,7 @@ class TransferGAN(LightningVAE):
         else:
             print("safe")
 
-        if torch.isnan(sigma).any():
+        if torch.isnan(log_var).any():
             print("ass")
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
@@ -316,7 +316,7 @@ class TransferGAN(LightningVAE):
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr), AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = torch.mean(self.model.prior(mu, sigma), dim=0) 
+        kl_div = torch.mean(self.model.prior(mu, log_var), dim=0) 
 
         print(reconstruction_loss, kl_div)
 
@@ -380,7 +380,7 @@ class TransferGAN(LightningVAE):
     def validation_step(self, batch):
         x, y = batch
 
-        y_hat, mu, sigma = self.model(x)
+        y_hat, mu, log_var = self.model(x)
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # generator losses
@@ -460,8 +460,8 @@ class PQMFVAE(nn.Module):
         h = self.pqmf2hid(x_mb)
         if torch.isnan(h).any():
             print("blud")
-        mu, sigma = self.hid2mu(h), self.hid2sigma(h)
-        return mu, sigma
+        mu, log_var = self.hid2mu(h), self.hid2sigma(h)
+        return mu, log_var
     
     def decode(self, z):
         h = self.z2hid(z)
@@ -472,13 +472,13 @@ class PQMFVAE(nn.Module):
         return x_hat
     
     def forward(self, x):
-        mu, sigma = self.encode(x)
-        epsilon = torch.randn_like(sigma)
+        mu, log_var = self.encode(x)
+        epsilon = torch.randn_like(log_var)
 
-        z_reparam = mu + sigma*epsilon
+        z_reparam = mu + torch.sqrt(torch.exp(log_var))*epsilon
         x_hat = torch.tanh(self.decode(z_reparam))
 
-        return x_hat, mu, sigma
+        return x_hat, mu, log_var
 
 class MOGPrior(nn.Module):
     def __init__(self, zdim: int, n_components: int):
@@ -490,23 +490,23 @@ class MOGPrior(nn.Module):
         if n_components > 0:
             self.weight_logits = nn.Parameter(torch.ones(n_components))
             self.means = nn.Parameter(torch.randn(n_components, zdim))
-            self.variances = nn.Parameter(torch.randn(n_components, zdim))
+            self.log_vars = nn.Parameter(torch.randn(n_components, zdim))
         
         else:
             self.weight_logits = None
             self.means = None
-            self.variances = None
+            self.log_vars = None
     
-    def kld_estimate(self, post_mean, post_var):
+    def kld_estimate(self, post_mean, post_log_var):
         weights = torch.softmax(self.weight_logits, 0)
-        print(self.means.shape, self.variances.shape, post_mean.shape, post_var.shape)
+        print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
 
-        if torch.isnan(self.means + self.variances).any() or torch.isinf(self.means + self.variances).any:
+        if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any:
             print("prior fucked")
         else:
             print("prior safe")
 
-        kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var) for (mean, var) in zip(self.means, self.variances)]) # [M, B, T]
+        kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), log_var.reshape(1, -1, 1), post_mean, post_log_var) for (mean, log_var) in zip(self.means, self.log_vars)]) # [M, B, T]
         print(kld_components.shape)
         
         if torch.isnan(kld_components).any() or torch.isinf(kld_components).any:
@@ -532,16 +532,16 @@ class MOGPrior(nn.Module):
 
         return elbo
     
-    def forward(self, post_mean, post_var):
+    def forward(self, post_mean, post_log_var):
         if self.weight_logits is not None:
-            kld = torch.mean(self.kld_estimate(post_mean, post_var), dim=-1)
+            kld = torch.mean(self.kld_estimate(post_mean, post_log_var), dim=-1)
             if torch.isnan(kld).any:
                 print("kld forward is fucked")
             else:
                 print("kld forward is safe")
         else:
             # if no trainable prior is used, use closed form kld expression with standard gaussian prior
-            kld = torch.mean(kld_component(0, 1, post_mean, post_var), dim=-1)
+            kld = torch.mean(kld_component(0, 0, post_mean, post_log_var), dim=-1)
         
         return kld # [B]
 
@@ -814,8 +814,8 @@ def lin_annealed_beta(current_step, total_steps):
 def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
-def kld_component(prior_mean: torch.Tensor, prior_var: torch.Tensor, post_mean: torch.Tensor, post_var: torch.Tensor):
-    return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.pow(post_var / prior_var, 2) - torch.log(torch.pow(post_var / prior_var, 2)) - 1, (-2))
+def kld_component(prior_mean: torch.Tensor, prior_log_var: torch.Tensor, post_mean: torch.Tensor, post_log_var: torch.Tensor):
+    return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.exp(post_log_var / prior_log_var) - (post_log_var / prior_log_var) - 1, (-2))
 
 def mod_sigmoid(x):
     return 2 * torch.sigmoid(x)**2.3 + 1e-7
@@ -882,6 +882,6 @@ if __name__ == "__main__":
     print(pqmf.inverse(pqmf(x)).shape)
     # vae = SingleVAE(input_dim = 4800)
     vae = PQMFVAE(pqmf)
-    x_hat, mu, sigma = vae(x)
-    # print(x_hat.shape, mu.shape, sigma.shape)
+    x_hat, mu, log_var = vae(x)
+    # print(x_hat.shape, mu.shape, log_var.shape)
     print(torch.isnan(mu).any())
