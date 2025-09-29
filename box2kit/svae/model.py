@@ -503,8 +503,20 @@ class MOGPrior(nn.Module):
 
         kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), -1) for (mean, var) in zip(self.means, self.variances)])
         print(kld_components.shape)
+        
+        if torch.isnan(kld_components).any():
+            print("fuck1")
+
         exp_sum = torch.sum(weights.reshape(-1, 1) * torch.exp(-kld_components), dim=0)
+
+        if torch.isnan(exp_sum).any():
+            print("fuck2")
+
         elbo = -torch.log(exp_sum)
+
+        if torch.isnan(elbo).any():
+            print("fuck3")
+
         print(elbo.shape)
 
         return elbo
