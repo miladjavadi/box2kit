@@ -332,7 +332,7 @@ class TransferGAN(LightningVAE):
             adversarial_loss = 0
 
         # backprop
-        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
+        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs/4)
         gen_loss = reconstruction_loss + beta*kl_div + self.lambda_adversarial * adversarial_loss
 
         gen_optimizer.zero_grad()
@@ -778,8 +778,8 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
         return (p_left, p_right)
         # return p_right
 
-def cos_annealed_beta(current_step, total_steps):
-    return 0.5*(1- math.cos(current_step * math.pi / total_steps))
+def cos_annealed_beta(current_step, n_warmup_steps):
+    return 0.5*(1- math.cos(current_step * math.pi / n_warmup_steps)) if current_step < n_warmup_steps else 1
 
 def lin_annealed_beta(current_step, total_steps):
     return min(1.0, current_step / total_steps)
