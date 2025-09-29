@@ -501,7 +501,7 @@ class MOGPrior(nn.Module):
         weights = torch.softmax(self.weight_logits, 0)
         print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
 
-        if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any:
+        if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any():
             print("prior fucked")
         else:
             print("prior safe")
@@ -509,21 +509,21 @@ class MOGPrior(nn.Module):
         kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), log_var.reshape(1, -1, 1), post_mean, post_log_var) for (mean, log_var) in zip(self.means, self.log_vars)]) # [M, B, T]
         print(kld_components.shape)
         
-        if torch.isnan(kld_components).any() or torch.isinf(kld_components).any:
+        if torch.isnan(kld_components).any() or torch.isinf(kld_components).any():
             print("kld_components fucked")
         else:
             print("kld_components safe")
 
         exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
-        if torch.isnan(exp_sum).any() or torch.isinf(exp_sum).any:
+        if torch.isnan(exp_sum).any() or torch.isinf(exp_sum).any():
             print("exp_sum fucked")
         else:
             print("exp_sum safe")
 
         elbo = -torch.log(exp_sum)
 
-        if torch.isnan(elbo).any() or torch.isinf(elbo).any:
+        if torch.isnan(elbo).any() or torch.isinf(elbo).any():
             print("elbo fucked")
         else:
             print("elbo safe")
@@ -535,7 +535,7 @@ class MOGPrior(nn.Module):
     def forward(self, post_mean, post_log_var):
         if self.weight_logits is not None:
             kld = torch.mean(self.kld_estimate(post_mean, post_log_var), dim=-1)
-            if torch.isnan(kld).any:
+            if torch.isnan(kld).any():
                 print("kld forward is fucked")
             else:
                 print("kld forward is safe")
