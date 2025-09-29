@@ -513,7 +513,8 @@ class MOGPrior(nn.Module):
         if self.weight_logits is not None:
             kld = self.kld_estimate(post_mean, post_var)
         else:
-            kld = torch.mean(kld_component(1, 0, post_mean, post_var), dim=-1)
+            # if no trainable prior is used, use closed form kld expression with standard gaussian prior
+            kld = torch.mean(kld_component(0, 1, post_mean, post_var), dim=-1)
         
         return kld
 
