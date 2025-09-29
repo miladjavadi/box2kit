@@ -279,7 +279,7 @@ class TransferGAN(LightningVAE):
         self.discriminator = DiscriminatorV2(discriminator_dims)
         self.adversarial_phase = False
         self.real_label = 1
-        self.fake_label = 0
+        self.fake_label = -1
         self.adversarial_loss_fn = hinge_loss
         self.warmup = warmup
 
