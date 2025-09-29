@@ -501,13 +501,13 @@ class MOGPrior(nn.Module):
         weights = torch.softmax(self.weight_logits, 0)
         print(self.means.shape, self.variances.shape, post_mean.shape, post_var.shape)
 
-        kld_components = torch.stack([torch.mean(kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var), -1) for (mean, var) in zip(self.means, self.variances)])
+        kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var) for (mean, var) in zip(self.means, self.variances)]) # [M, B, T]
         print(kld_components.shape)
         
         if torch.isnan(kld_components).any():
             print("fuck1")
 
-        exp_sum = torch.sum(weights.reshape(-1, 1) * torch.exp(-kld_components), dim=0)
+        exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
         if torch.isnan(exp_sum).any():
             print("fuck2")
@@ -523,12 +523,12 @@ class MOGPrior(nn.Module):
     
     def forward(self, post_mean, post_var):
         if self.weight_logits is not None:
-            kld = self.kld_estimate(post_mean, post_var)
+            kld = torch.mean(self.kld_estimate(post_mean, post_var), dim=-1)
         else:
             # if no trainable prior is used, use closed form kld expression with standard gaussian prior
             kld = torch.mean(kld_component(0, 1, post_mean, post_var), dim=-1)
         
-        return kld
+        return kld # [B]
 
 class EncoderStack(nn.Module):
     def __init__(self,
