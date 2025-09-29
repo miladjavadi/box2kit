@@ -316,7 +316,7 @@ class TransferGAN(LightningVAE):
         multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr), AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr))
         reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
 
-        kl_div = torch.mean(self.model.prior(mu, sigma), dim=0)
+        kl_div = torch.mean(self.model.prior(mu, sigma), dim=0) 
 
         print(reconstruction_loss, kl_div)
 
@@ -505,19 +505,23 @@ class MOGPrior(nn.Module):
         print(kld_components.shape)
         
         if torch.isnan(kld_components).any():
-            print("fuck1")
+            print("kld_components fucked")
         else:
-            print("unfuck")
+            print("kld_components safe")
 
         exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
         if torch.isnan(exp_sum).any():
-            print("fuck2")
+            print("exp_sum fucked")
+        else:
+            print("exp_sum safe")
 
         elbo = -torch.log(exp_sum)
 
         if torch.isnan(elbo).any():
-            print("fuck3")
+            print("elbo fucked")
+        else:
+            print("elbo safe")
 
         print(elbo.shape)
 
@@ -526,6 +530,10 @@ class MOGPrior(nn.Module):
     def forward(self, post_mean, post_var):
         if self.weight_logits is not None:
             kld = torch.mean(self.kld_estimate(post_mean, post_var), dim=-1)
+            if torch.isnan(kld).any:
+                print("kld forward is fucked")
+            else:
+                print("kld forward is safe")
         else:
             # if no trainable prior is used, use closed form kld expression with standard gaussian prior
             kld = torch.mean(kld_component(0, 1, post_mean, post_var), dim=-1)
