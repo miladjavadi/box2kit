@@ -489,8 +489,8 @@ class MOGPrior(nn.Module):
 
         if n_components > 0:
             self.weight_logits = nn.Parameter(torch.ones(n_components))
-            self.means = nn.Parameter(torch.randn(n_components, zdim))
-            self.log_vars = nn.Parameter(torch.randn(n_components, zdim))
+            self.means = nn.Parameter(torch.zeros(n_components, zdim))
+            self.log_vars = nn.Parameter(torch.ones(n_components, zdim))
         
         else:
             self.weight_logits = None
@@ -535,7 +535,7 @@ class MOGPrior(nn.Module):
     def forward(self, post_mean, post_log_var):
         if self.weight_logits is not None:
             kld = torch.mean(self.kld_estimate(post_mean, post_log_var), dim=-1)
-            if torch.isnan(kld).any():
+            if torch.isnan(kld).any() or torch.isinf(kld).any():
                 print("kld forward is fucked")
             else:
                 print("kld forward is safe")
