@@ -488,7 +488,7 @@ class MOGPrior(nn.Module):
         self.n_components = n_components
 
         if n_components > 0:
-            self.weight_logits = nn.Parameter(torch.randn(n_components))
+            self.weight_logits = nn.Parameter(torch.ones(n_components))
             self.means = nn.Parameter(torch.randn(n_components, zdim))
             self.variances = nn.Parameter(torch.randn(n_components, zdim))
         
@@ -500,6 +500,11 @@ class MOGPrior(nn.Module):
     def kld_estimate(self, post_mean, post_var):
         weights = torch.softmax(self.weight_logits, 0)
         print(self.means.shape, self.variances.shape, post_mean.shape, post_var.shape)
+
+        if torch.isnan(self.means + self.variances).any() or torch.isinf(self.means + self.variances).any:
+            print("prior fucked")
+        else:
+            print("prior safe")
 
         kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), var.reshape(1, -1, 1), post_mean, post_var) for (mean, var) in zip(self.means, self.variances)]) # [M, B, T]
         print(kld_components.shape)
