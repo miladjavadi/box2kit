@@ -498,7 +498,8 @@ class MOGPrior(nn.Module):
             self.log_vars = None
     
     def kld_estimate(self, post_mean, post_log_var):
-        weights = torch.softmax(self.weight_logits, 0)
+        # weights = torch.softmax(self.weight_logits, 0)
+        log_weights = torch.log_softmax(self.weight_logits, 0)
         print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
 
         if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any():
@@ -514,14 +515,16 @@ class MOGPrior(nn.Module):
         else:
             print("kld_components safe")
 
-        exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
+        # exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
-        if torch.isnan(exp_sum).any() or torch.isinf(exp_sum).any():
-            print("exp_sum fucked")
-        else:
-            print("exp_sum safe")
+        # if torch.isnan(exp_sum).any() or torch.isinf(exp_sum).any():
+        #     print("exp_sum fucked")
+        # else:
+        #     print("exp_sum safe")
 
-        elbo = -torch.log(exp_sum)
+        # elbo = -torch.log(exp_sum)
+
+        elbo = -torch.logsumexp(log_weights.reshape(-1, 1, 1) + kld_components, dim=0)
 
         if torch.isnan(elbo).any() or torch.isinf(elbo).any():
             print("elbo fucked")
