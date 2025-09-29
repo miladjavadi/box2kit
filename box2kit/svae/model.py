@@ -294,18 +294,18 @@ class TransferGAN(LightningVAE):
 
         y_hat, mu, log_var = self.model(x)
 
-        if torch.isnan(y_hat).any():
-            print("kunt")
-        else:
-            print("the dark knight rises")
+        # if torch.isnan(y_hat).any():
+        #     print("kunt")
+        # else:
+        #     print("the dark knight rises")
 
-        if torch.isnan(mu).any():
-            print("fuck")
-        else:
-            print("safe")
+        # if torch.isnan(mu).any():
+        #     print("fuck")
+        # else:
+        #     print("safe")
 
-        if torch.isnan(log_var).any():
-            print("ass")
+        # if torch.isnan(log_var).any():
+        #     print("ass")
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
@@ -318,7 +318,7 @@ class TransferGAN(LightningVAE):
 
         kl_div = torch.mean(self.model.prior(mu, log_var), dim=0) 
 
-        print(reconstruction_loss, kl_div)
+        # print(reconstruction_loss, kl_div)
 
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
@@ -455,11 +455,11 @@ class PQMFVAE(nn.Module):
         x_pad = critical_pad(x, 16)
         # x_pad = x[..., :((x.shape[-1]//16)*16)]
         x_mb = self.pqmf(x_pad)
-        if torch.isnan(x_mb).any():
-            print("labubu")
+        # if torch.isnan(x_mb).any():
+        #     print("labubu")
         h = self.pqmf2hid(x_mb)
-        if torch.isnan(h).any():
-            print("blud")
+        # if torch.isnan(h).any():
+        #     print("blud")
         mu, log_var = self.hid2mu(h), self.hid2sigma(h)
         return mu, log_var
     
@@ -500,20 +500,20 @@ class MOGPrior(nn.Module):
     def kld_estimate(self, post_mean, post_log_var):
         # weights = torch.softmax(self.weight_logits, 0)
         log_weights = torch.log_softmax(self.weight_logits, 0)
-        print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
+        # print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
 
-        if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any():
-            print("prior fucked")
-        else:
-            print("prior safe")
+        # if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any():
+        #     print("prior fucked")
+        # else:
+        #     print("prior safe")
 
         kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), log_var.reshape(1, -1, 1), post_mean, post_log_var) for (mean, log_var) in zip(self.means, self.log_vars)]) # [M, B, T]
-        print(kld_components.shape)
+        # print(kld_components.shape)
         
-        if torch.isnan(kld_components).any() or torch.isinf(kld_components).any():
-            print("kld_components fucked")
-        else:
-            print("kld_components safe")
+        # if torch.isnan(kld_components).any() or torch.isinf(kld_components).any():
+        #     print("kld_components fucked")
+        # else:
+        #     print("kld_components safe")
 
         # exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
 
@@ -526,22 +526,22 @@ class MOGPrior(nn.Module):
 
         elbo = -torch.logsumexp(log_weights.reshape(-1, 1, 1) - kld_components, dim=0)
 
-        if torch.isnan(elbo).any() or torch.isinf(elbo).any():
-            print("elbo fucked")
-        else:
-            print("elbo safe")
+        # if torch.isnan(elbo).any() or torch.isinf(elbo).any():
+        #     print("elbo fucked")
+        # else:
+        #     print("elbo safe")
 
-        print(elbo.shape)
+        # print(elbo.shape)
 
         return elbo
     
     def forward(self, post_mean, post_log_var):
         if self.weight_logits is not None:
             kld = torch.mean(self.kld_estimate(post_mean, post_log_var), dim=-1)
-            if torch.isnan(kld).any() or torch.isinf(kld).any():
-                print("kld forward is fucked")
-            else:
-                print("kld forward is safe")
+            # if torch.isnan(kld).any() or torch.isinf(kld).any():
+            #     print("kld forward is fucked")
+            # else:
+            #     print("kld forward is safe")
         else:
             # if no trainable prior is used, use closed form kld expression with standard gaussian prior
             kld = torch.mean(kld_component(0, 0, post_mean, post_log_var), dim=-1)
