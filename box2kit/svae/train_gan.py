@@ -75,11 +75,15 @@ def main(args):
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
 
-    checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
+    # checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
 
-    checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
+    callbacks = [GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]
+
+    if val_loader is not None:
+        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+    
     logger = CSVLogger(save_dir="w2w_logs", name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=[EarlyStopping(monitor=checkpoint_monitor, mode="min", patience=10, check_finite=True), checkpoint_callback, GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]) # type: ignore
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, ckpt_path=ckpt)
 
         
