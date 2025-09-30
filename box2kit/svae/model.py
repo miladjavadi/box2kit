@@ -258,7 +258,8 @@ class TransferGAN(LightningVAE):
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4,
                  lambda_adversarial: float = 1,
-                 warmup: int = 250
+                 warmup: int = 250,
+                 beta: float = 1
                  ):
         self.lambda_adversarial = lambda_adversarial
         super().__init__(block_length,
@@ -282,6 +283,7 @@ class TransferGAN(LightningVAE):
         self.fake_label = -1
         self.adversarial_loss_fn = hinge_loss
         self.warmup = warmup
+        self.beta_max = beta
 
         self.automatic_optimization = False
     
@@ -332,7 +334,7 @@ class TransferGAN(LightningVAE):
             adversarial_loss = 0
 
         # backprop
-        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs/4)
+        beta = self.beta_max * cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs/4)
         gen_loss = reconstruction_loss + beta*kl_div + self.lambda_adversarial * adversarial_loss
 
         gen_optimizer.zero_grad()
