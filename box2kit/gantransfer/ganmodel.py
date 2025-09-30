@@ -159,8 +159,8 @@ class DiscriminatorV2(nn.Module):
         # Flatten convolution outputs
         h_flat = h.reshape(h.shape[0], self.nkernels[-1]*(self.input_dims[1]//np.prod(self.strides)))
 
-        # score = self.sigmoid(self.conv2score(h_flat))
-        score = self.conv2score(h_flat)
+        score = self.sigmoid(self.conv2score(h_flat)) # bce
+        # score = self.conv2score(h_flat) # hinge
         return score
 
 
@@ -378,7 +378,8 @@ class DACGANV2(pl.LightningModule):
         self.spectral_loss_fn = spectral_loss_fn
         self.mel_loss_fn = mel_loss_fn
         self.embedding_loss_fn = nn.MSELoss()
-        self.adversarial_loss_fn = hinge_loss
+        # self.adversarial_loss_fn = hinge_loss
+        self.adversarial_loss_fn = nn.BCELoss()
 
         self.lambda_embedding = lambda_embedding
         self.lambda_adversarial = lambda_adversarial
@@ -394,7 +395,7 @@ class DACGANV2(pl.LightningModule):
         self.automatic_optimization = False
 
         self.real_label = 1
-        self.fake_label = -1
+        self.fake_label = 0
 
         self.codec.eval()
         self.codec.requires_grad_(False)
@@ -444,8 +445,8 @@ class DACGANV2(pl.LightningModule):
             gen_score = self.discriminator(stft_gen)
             real_labels = torch.full_like(gen_score, fill_value=self.real_label)
             # # how convinced the discriminator is that generated waveforms are real
-            # adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels) # bce loss
-            adversarial_loss = torch.mean(gen_score) # hinge loss
+            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels) # bce loss
+            # adversarial_loss = torch.mean(gen_score) # hinge loss
 
         else:
             adversarial_loss = 0
@@ -463,12 +464,12 @@ class DACGANV2(pl.LightningModule):
             real_score = self.discriminator(stft_output)
             gen_score = self.discriminator(stft_gen.detach())
 
-            # real_labels = torch.full_like(real_score, fill_value=self.real_label)
-            # fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
+            real_labels = torch.full_like(real_score, fill_value=self.real_label)
+            fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
 
-            # discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
+            discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels)
 
-            discr_loss = self.adversarial_loss_fn(real_score, self.real_label) + self.adversarial_loss_fn(gen_score, self.fake_label)
+            # discr_loss = self.adversarial_loss_fn(real_score, self.real_label) + self.adversarial_loss_fn(gen_score, self.fake_label)
             self.manual_backward(discr_loss)
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)

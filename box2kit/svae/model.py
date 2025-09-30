@@ -281,7 +281,7 @@ class TransferGAN(LightningVAE):
         self.adversarial_phase = False
         self.real_label = 1
         self.fake_label = 0
-        self.adversarial_loss_fn = torch.nn.BCELoss()
+        self.adversarial_loss_fn = nn.BCELoss()
         # self.adversarial_loss_fn = hinge_loss
         self.warmup = warmup
         self.beta_max = beta
@@ -326,7 +326,7 @@ class TransferGAN(LightningVAE):
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
             gen_score = self.discriminator(stft_gen)
-            real_labels = torch.full_like(gen_score, fill_value=self.real_label)
+            real_labels = torch.full_like(gen_score, fill_value=self.real_label) # bce
             # # how convinced the discriminator is that generated waveforms are real
             adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels) # bce
             # adversarial_loss = torch.mean(gen_score) # hinge
