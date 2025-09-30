@@ -280,8 +280,9 @@ class TransferGAN(LightningVAE):
         self.discriminator = DiscriminatorV2(discriminator_dims)
         self.adversarial_phase = False
         self.real_label = 1
-        self.fake_label = -1
-        self.adversarial_loss_fn = hinge_loss
+        self.fake_label = 0
+        self.adversarial_loss_fn = torch.nn.BCELoss()
+        # self.adversarial_loss_fn = hinge_loss
         self.warmup = warmup
         self.beta_max = beta
 
@@ -325,10 +326,10 @@ class TransferGAN(LightningVAE):
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
             gen_score = self.discriminator(stft_gen)
-            # real_labels = torch.full_like(gen_score, fill_value=self.real_label)
+            real_labels = torch.full_like(gen_score, fill_value=self.real_label)
             # # how convinced the discriminator is that generated waveforms are real
-            # adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels)
-            adversarial_loss = torch.mean(gen_score)
+            adversarial_loss = self.adversarial_loss_fn(gen_score, real_labels) # bce
+            # adversarial_loss = torch.mean(gen_score) # hinge
 
         else:
             adversarial_loss = 0
@@ -355,7 +356,8 @@ class TransferGAN(LightningVAE):
             real_labels = torch.full_like(real_score, fill_value=self.real_label)
             fake_labels = torch.full_like(gen_score, fill_value=self.fake_label)
 
-            discr_loss = self.adversarial_loss_fn(real_score, self.real_label) + self.adversarial_loss_fn(gen_score, self.fake_label)
+            # discr_loss = self.adversarial_loss_fn(real_score, self.real_label) + self.adversarial_loss_fn(gen_score, self.fake_label) # hinge
+            discr_loss = self.adversarial_loss_fn(real_score, real_labels) + self.adversarial_loss_fn(gen_score, fake_labels) # bce
             self.manual_backward(discr_loss)
             discr_optimizer.step()
             self.untoggle_optimizer(discr_optimizer)
