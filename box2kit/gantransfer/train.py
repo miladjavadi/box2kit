@@ -143,6 +143,9 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 def main(args):
     target_dir = args.target
     output_dir = args.out
+    val_target_dir = args.vtarget
+    val_output_dir = args.voutput
+
     tempo = args.tempo
     subdivs = args.subdiv
     batch_size = args.batchsize
@@ -162,14 +165,17 @@ def main(args):
     model_sr = dac_model.sample_rate
     block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
 
-    dataloader = prepare_dataloader(target_dir, output_dir, block_length_in_samples, batch_size, model_sr, device)
+    train_dataloader = prepare_dataloader(target_dir, output_dir, block_length_in_samples, batch_size, model_sr, device)
 
-    val_loader = None
+    if val_target_dir is None or val_output_dir is None:
+        val_loader = None
+    else:
+        val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, batch_size, model_sr, device)
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
-        dummy_frame = dac_model.encode(dataloader.dataset[0][0].unsqueeze(0))[0]
+        dummy_frame = dac_model.encode(train_dataloader.dataset[0][0].unsqueeze(0))[0]
         block_length_in_frames = dummy_frame.shape[2]
         output_block = dac_model.decode(dummy_frame)
         output_block_length_in_samples = output_block.shape[2]
@@ -186,12 +192,12 @@ def main(args):
     
     logger = CSVLogger(save_dir="w2w_logs", name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
-    trainer.fit(gan, train_dataloaders=dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
+    trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
 
-    trainer.fit(gan, train_dataloaders=dataloader, ckpt_path=ckpt)
+    trainer.fit(gan, train_dataloaders=train_dataloader, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
@@ -212,6 +218,8 @@ if __name__ == "__main__":
     parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
     parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=500)
     parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="neural_logs")
+    parser.add_argument("--vtarget", help="Location of validation target audio files.", type=str, metavar="path", default=None)
+    parser.add_argument("--voutput", help="Location of validation output audio files.", type=str, metavar="path", default=None)
     args=parser.parse_args()
     main(args)
 
