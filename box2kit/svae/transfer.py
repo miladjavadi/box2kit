@@ -35,7 +35,7 @@ def main(args):
         for input_wave, file_name in zip(input_waveforms, file_names):
             input_wave = input_wave.to(device)
             output, _, _ = transfer(input_wave.reshape(1,1,-1), gen_model)
-            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output.detach().cpu(), model_sr)
+            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output[0].detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
