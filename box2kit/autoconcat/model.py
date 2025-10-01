@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from box2kit.autoconcat.util import batch_partition
 from box2kit.svae.model import PairedWaveformDataset
+from tqdm import tqdm
 
 class PairedCorpus():
     def __init__(self, target_blocks, output_blocks, block_length_in_samples):
@@ -53,8 +54,7 @@ class PairedCodebook():
         codeword_indices = []
 
         point_pair_distances = self.point_pair_distance_array(training_data, validation_data, batch_size)
-        for i in range(codebook_length):
-            print("words", len(codeword_indices))
+        for i in tqdm(range(codebook_length), desc="Codewords found"):
             new_codeword_index = self.greedy_search_step(codeword_indices, point_pair_distances)
             codeword_indices.append(new_codeword_index)
 
