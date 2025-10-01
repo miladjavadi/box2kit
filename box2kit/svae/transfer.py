@@ -24,7 +24,7 @@ def main(args):
 
     ckpt = checkpoints.get_checkpoint_path(CKPT_DIR, SORT_KEY, DESCENDING)
 
-    gen_model = TransferGAN.load_from_checkpoint(ckpt)
+    gen_model = TransferGAN.load_from_checkpoint(ckpt, map_location=device)
     gen_model.eval()
     # model_sr = gen_model.sample_rate
     model_sr = 44100
