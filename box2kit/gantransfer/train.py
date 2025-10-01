@@ -16,6 +16,7 @@ import yaml
 import dac
 import torchaudio
 from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
+from box2kit.utils.callbacks import EarlyStoppingWithWarmup
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
@@ -177,11 +178,15 @@ def main(args):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
 
-    checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
 
-    checkpoint_callback = ModelCheckpoint(monitor=checkpoint_monitor, save_top_k=1, mode="min")
-    logger = CSVLogger(save_dir="neural_logs", name=experiment_name)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=[EarlyStopping(monitor=checkpoint_monitor, mode="min", patience=10, check_finite=True), checkpoint_callback]) # type: ignore
+    if val_loader is not None:
+        callbacks = ([EarlyStoppingWithWarmup(int(0.65*max_epochs), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+    else:
+        callbacks = None
+    
+    logger = CSVLogger(save_dir="w2w_logs", name=experiment_name)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
+    trainer.fit(gan, train_dataloaders=dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None

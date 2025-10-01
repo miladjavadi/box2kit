@@ -26,7 +26,8 @@ def main(args):
 
     gen_model = TransferGAN.load_from_checkpoint(ckpt)
     gen_model.eval()
-    model_sr = gen_model.sample_rate
+    # model_sr = gen_model.sample_rate
+    model_sr = 44100
 
     input_waveforms, file_names = uload.load_dir(INPUT_DIR, model_sr)
 
