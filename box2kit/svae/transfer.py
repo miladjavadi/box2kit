@@ -33,7 +33,7 @@ def main(args):
 
     with torch.inference_mode():
         for input_wave, file_name in zip(input_waveforms, file_names):
-            input_wave.to(device)
+            input_wave = input_wave.to(device)
             output = transfer(input_wave.reshape(1,1,-1), gen_model)
             torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output.detach().cpu(), model_sr)
 
