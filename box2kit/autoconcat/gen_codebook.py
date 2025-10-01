@@ -26,8 +26,8 @@ def main(args):
     model_sr = dac_model.sample_rate
     seg_length_in_samples = int(model_sr*60/(TEMPO*SUBDIVS/4))
 
-    target_waves = uload.load_dir(TARGET_DIR, model_sr)
-    output_waves = uload.load_dir(OUTPUT_DIR, model_sr)
+    target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
+    output_waves, _ = uload.load_dir(OUTPUT_DIR, model_sr)
 
     target_waveform_segs = uload.reshape_data(target_waves, seg_length_in_samples).to(DEVICE)
     output_waveform_segs = uload.reshape_data(output_waves, seg_length_in_samples).to(DEVICE)
