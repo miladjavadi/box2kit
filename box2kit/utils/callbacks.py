@@ -1,6 +1,9 @@
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-class EarlyStoppingWithWarmup(EarlyStopping):
+class DelayedEarlyStopping(EarlyStopping):
+    """
+    Early-stopping callback with delayed initialization.
+    """
     def __init__(self, warmup_length=0, **kwargs):
         super().__init__(**kwargs)
         self.warmup_length = warmup_length

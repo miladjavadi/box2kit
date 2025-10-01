@@ -15,7 +15,7 @@ import os
 from box2kit.svae.rave_pqmf import PQMF
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from box2kit.utils.callbacks import EarlyStoppingWithWarmup
+from box2kit.utils.callbacks import DelayedEarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 ### CURRENT
@@ -88,7 +88,7 @@ def main(args):
     callbacks = [GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]
 
     if val_loader is not None:
-        callbacks.extend([EarlyStoppingWithWarmup(int(0.65*NUM_EPOCHS), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks.extend([DelayedEarlyStopping(int(0.65*NUM_EPOCHS), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
     logger = CSVLogger(save_dir="w2w_logs", name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore

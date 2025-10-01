@@ -16,7 +16,7 @@ import yaml
 import dac
 import torchaudio
 from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
-from box2kit.utils.callbacks import EarlyStoppingWithWarmup
+from box2kit.utils.callbacks import DelayedEarlyStopping
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
@@ -186,7 +186,7 @@ def main(args):
 
 
     if val_loader is not None:
-        callbacks = ([EarlyStoppingWithWarmup(int(0.65*max_epochs), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks = ([DelayedEarlyStopping(int(0.65*max_epochs), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     else:
         callbacks = None
     
