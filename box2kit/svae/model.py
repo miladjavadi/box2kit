@@ -493,8 +493,8 @@ class MOGPrior(nn.Module):
 
         if n_components > 0:
             self.weight_logits = nn.Parameter(torch.ones(n_components))
-            self.means = nn.Parameter(torch.randn(n_components, zdim))
-            self.log_vars = nn.Parameter(torch.randn(n_components, zdim))
+            self.means = nn.Parameter(torch.zeros(n_components, zdim))
+            self.log_vars = nn.Parameter(torch.zeros(n_components, zdim))
         
         else:
             self.weight_logits = None
