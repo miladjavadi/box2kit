@@ -731,11 +731,13 @@ class GenerationCallback(Callback):
         self.output_test = self.test_file is not None and self.out_dir is not None
 
     def on_train_start(self, trainer, pl_module):
+        log_path = trainer.logger.log_dir
         if self.output_test:
             try:
-                os.mkdir(self.out_dir)
+                os.mkdir(os.path.join(log_path, self.out_dir))
             except FileExistsError:
                 pass
+            self.out_path = os.path.join(log_path, self.out_dir)
         return super().on_train_start(trainer, pl_module)
     
     def on_train_epoch_end(self, trainer, pl_module):
@@ -747,7 +749,7 @@ class GenerationCallback(Callback):
             with torch.inference_mode():
                 reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
-            torchaudio.save(f"{self.out_dir}/epoch_{epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
+            torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_epoch_end(trainer, pl_module)
     
     def on_train_end(self, trainer, pl_module):
@@ -758,7 +760,7 @@ class GenerationCallback(Callback):
             with torch.inference_mode():
                 reconstructed_wave = torch.cat([pl_module(seg.unsqueeze(0))[0][:,:,:self.block_length] for seg in test_segs], dim=2).squeeze(0)
 
-            torchaudio.save(f"{self.out_dir}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
+            torchaudio.save(f"{self.out_path}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
 
 class LinterConvTranspose1D(nn.Module):

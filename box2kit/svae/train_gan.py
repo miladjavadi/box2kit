@@ -22,45 +22,60 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SAMPLE_RATE = 44100
+NFFT = 1024
+TEST_OUT = "test_out"
 
-def main(args):
-    NUM_EPOCHS = args.epochs
-    BATCH_SIZE = args.batchsize
-    LR = args.lr
-    TEMPO = args.bpm
-    SUBDIV = args.subdiv
-    TEST_FILE = args.test
-    TEST_OUT = args.testout
-    TEST_FREQ = args.testfreq
-    CKPT_LOAD = args.ckpt
-    SORT_KEY = args.ckptkey
-    DESCENDING = not args.asc
+def main(args, configs):
+    global_config = configs["configs"]
+    model_config = configs["waveenc"]
+
+    # configurables
+    SAMPLE_RATE = model_config["sample_rate"]
+    TEMPO = model_config["tempo"]
+    SUBDIV = model_config["subdiv"]
+    NMOG = model_config["mog"]
+
+    NUM_EPOCHS = model_config["epochs"]
+    BATCH_SIZE = model_config["batch_size"]
+    LR = model_config["lr"]
+    WARMUP = model_config["warmup"]
+    ES_DELAY = model_config["es_delay"]
+    BETA = model_config["beta"]
+    PHI = model_config["phi"]
+
+    MODELS_DIR = global_config["models"]
+    LOGS_DIR = model_config["logs"]
+    TEST_FREQ = model_config["test_freq"]
+
+    TRAIN_TARGET_PATH = global_config["training_target_path"]
+    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
+    VAL_TARGET_PATH = global_config["validation_target_path"]
+    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+
+    # command-line arguments
+    DATA_PATH = args.data
     EXPERIMENT_NAME = args.name
-    LAMBDA_ADV = args.ladv
-    WARMUP = args.warmup
-    NFFT = 1024
-    NMOG = args.mog
-    BETA = args.beta
+    CKPT_LOAD = args.ckpt
+    TEST_FILE = args.test
 
     block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
     # trunc_block_length = (block_length//2048)*2048
     # remainder = block_length % 2048
 
+    train_target_dir = f"{DATA_PATH}/{TRAIN_TARGET_PATH}"
+    train_output_dir = f"{DATA_PATH}/{TRAIN_OUTPUT_PATH}"
+    val_target_dir = f"{DATA_PATH}/{VAL_TARGET_PATH}"
+    val_output_dir = f"{DATA_PATH}/{VAL_OUTPUT_PATH}"
 
-    target_dir = args.target
-    output_dir = args.output
-    val_target_dir = args.vtarget
-    val_output_dir = args.voutput
-
-    train_dataset = PairedWaveformDataset(target_dir, output_dir, block_length, SAMPLE_RATE)
+    train_dataset = PairedWaveformDataset(train_target_dir, train_output_dir, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    if val_target_dir is None or val_output_dir is None:
-        val_loader = None
-    else:
+    if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
         val_dataset = PairedWaveformDataset(val_target_dir, val_output_dir, block_length, SAMPLE_RATE)
         val_loader = DataLoader(dataset=val_dataset, batch_size = BATCH_SIZE, shuffle=True)
+    else:
+        print("No validation data found, skipping model validation.")
+        val_loader = None
 
     # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
     # model = PQMFVAE(pqmf).to(DEVICE)
@@ -76,19 +91,19 @@ def main(args):
         dummy = train_dataset[0][0]
         dummy_stft = torch.stft(dummy.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=dummy.device)).abs()
 
-    model = TransferGAN(block_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=NMOG, lr=LR, lambda_adversarial=LAMBDA_ADV, warmup=WARMUP, beta=BETA)
+    model = TransferGAN(block_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=NMOG, lr=LR, lambda_adversarial=PHI, warmup=WARMUP, beta=BETA)
 
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(CKPT_LOAD, SORT_KEY, DESCENDING) if CKPT_LOAD is not None else None
+    ckpt = get_checkpoint_path(CKPT_LOAD, "step", True) if CKPT_LOAD is not None else None
 
     # checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
 
     callbacks = [GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]
 
     if val_loader is not None:
-        callbacks.extend([DelayedEarlyStopping(int(0.65*NUM_EPOCHS), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks.extend([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
-    logger = CSVLogger(save_dir="w2w_logs", name=EXPERIMENT_NAME)
+    logger = CSVLogger(save_dir=os.path.join(MODELS_DIR, LOGS_DIR), name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
@@ -96,29 +111,11 @@ def main(args):
 if __name__ == "__main__":
     configs = load_configs("box2kit/configs")
     print(configs)
-    # parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
-
-    # parser.add_argument("--target", help="Location of target data.", type=str, metavar="path", required=True)
-    # parser.add_argument("--output", help="Location of output data.", type=str, metavar="path", required=True)
-    # parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
-    # parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
-    # parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
-    # parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
-    # parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=1e-4)
-    # parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
-    # parser.add_argument("--subdiv", help="Segments per bar", metavar="divs", type=int, default=8)
-    # parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
-    # parser.add_argument("--testout", help="Name of output test file dir", type=str, metavar="dirname", default=None)
-    # parser.add_argument("--testfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
-    # parser.add_argument("--ckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
-    # parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
-    # parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
-    # parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
-    # parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
-    # parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
-    # parser.add_argument("--mog", help="Number of Gaussian mixture modes in prior. 0 for standard Gaussian.", type=int, metavar="modes", default=0)
-    # parser.add_argument("--beta", help="Set importance of KL divergence in generator cost function.", type=float, metavar="beta", default=1)
-    # parser.add_argument("--vtarget", help="Location of validation target audio files.", type=str, metavar="path", default=None)
-    # parser.add_argument("--voutput", help="Location of validation output audio files.", type=str, metavar="path", default=None)
-    # args=parser.parse_args()
-    # main(args)
+    
+    parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
+    parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path", required=True)
+    parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
+    parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
+    
+    args=parser.parse_args()
+    main(args, configs)
