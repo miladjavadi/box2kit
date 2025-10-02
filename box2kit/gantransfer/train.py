@@ -209,9 +209,9 @@ def main(args, configs):
         callbacks = ([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(os.path.join(MODELS_DIR, LOGS_DIR), "step", True) if CKPT_LOAD is not None else None
+    ckpt = get_checkpoint_path(CKPT_LOAD, "step", True) if CKPT_LOAD is not None else None
 
-    logger = CSVLogger(save_dir=MODELS_DIR, name=EXPERIMENT_NAME)
+    logger = CSVLogger(save_dir=os.path.join(MODELS_DIR, LOGS_DIR), name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 

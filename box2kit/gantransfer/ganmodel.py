@@ -563,6 +563,23 @@ class GenerationCallback(Callback):
 
             torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
         return super().on_train_epoch_end(trainer, pl_module)
+    
+    def on_train_end(self, trainer, pl_module):
+        epoch = pl_module.trainer.current_epoch
+        codec = pl_module.codec
+
+        if self.output_test:
+            test_wave = [load_mono(self.test_file, codec.sample_rate)]
+            test_segs = reshape_data(test_wave, pl_module.block_length_in_samples).to(codec.device)
+
+            with torch.inference_mode():
+                test_latents = codec.encode(test_segs)[0]
+                test_out_latents = pl_module(test_latents)
+                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length_in_samples]
+                reconstructed_wave = test_out_segs.reshape(1, -1)
+
+            torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
+        return super().on_train_epoch_end(trainer, pl_module)
         
 
 ### UTILITY FUNCTIONS
