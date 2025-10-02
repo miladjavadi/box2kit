@@ -140,63 +140,78 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 
     return checkpoint
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+NFFT = 1024
+def main(args, configs):
+    global_config = configs["global"]
+    model_config = configs["neural"]
 
-def main(args):
-    target_dir = args.target
-    output_dir = args.out
-    val_target_dir = args.vtarget
-    val_output_dir = args.voutput
+    # configurables
+    TEMPO = model_config["tempo"]
+    SUBDIV = model_config["subdiv"]
 
-    tempo = args.tempo
-    subdivs = args.subdiv
-    batch_size = args.batchsize
-    max_epochs = args.maxepochs
-    ckpt_load = args.loadckpt
-    lambda_embedding = args.lemb
-    lambda_adversarial = args.ladv
-    warmup = args.warmup
-    sort_key = args.ckptkey
-    descending = not args.asc
-    experiment_name = args.name
-    nfft = 1024
+    NUM_EPOCHS = model_config["epochs"]
+    BATCH_SIZE = model_config["batch_size"]
+    LR = model_config["lr"]
+    WARMUP = model_config["warmup"]
+    ES_DELAY = model_config["es_delay"]
+    BETA = model_config["beta"]
+    PHI = model_config["phi"]
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    MODELS_DIR = mkdir(global_config["models"])
+    LOGS_DIR = model_config["logs"]
+    TEST_FREQ = model_config["test_freq"]
 
-    dac_model = dac.DAC.load(dac.utils.download()).to(device) # type: ignore
-    model_sr = dac_model.sample_rate
-    block_length_in_samples = int(model_sr*60/(tempo*subdivs/4))
+    TRAIN_TARGET_PATH = global_config["training_target_path"]
+    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
+    VAL_TARGET_PATH = global_config["validation_target_path"]
+    VAL_OUTPUT_PATH = global_config["validation_output_path"]
 
-    train_dataloader = prepare_dataloader(target_dir, output_dir, block_length_in_samples, batch_size, model_sr, device)
+    # command-line arguments
+    DATA_PATH = args.data
+    EXPERIMENT_NAME = args.name
+    CKPT_LOAD = args.ckpt
+    TEST_FILE = args.test
+
+    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
+    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
+    val_target_dir = os.path.join(DATA_PATH, VAL_TARGET_PATH)
+    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+
+    codec = dac.DAC.load(dac.utils.download()).to(device) # type: ignore
+    SAMPLE_RATE = codec.sample_rate
+    block_length_in_samples = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
+
+    train_dataloader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
 
     if val_target_dir is None or val_output_dir is None:
         val_loader = None
     else:
-        val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, batch_size, model_sr, device)
+        val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
-        dummy_frame = dac_model.encode(train_dataloader.dataset[0][0].unsqueeze(0))[0]
+        dummy_frame = codec.encode(train_dataloader.dataset[0][0].unsqueeze(0))[0]
         block_length_in_frames = dummy_frame.shape[2]
-        output_block = dac_model.decode(dummy_frame)
+        output_block = codec.decode(dummy_frame)
         output_block_length_in_samples = output_block.shape[2]
-        dummy_stft = torch.stft(output_block.squeeze(1), nfft, return_complex=True, window=torch.hann_window(nfft, device=output_block.device)).abs()
+        dummy_stft = torch.stft(output_block.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=output_block.device)).abs()
 
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
-    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], nfft, lambda_embedding, lambda_adversarial, dac_model, warmup=warmup)
-
+    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], NFFT, BETA, PHI, codec, warmup=WARMUP, lr=LR)
 
     if val_loader is not None:
-        callbacks = ([DelayedEarlyStopping(int(0.65*max_epochs), monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks = ([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     else:
         callbacks = None
     
-    logger = CSVLogger(save_dir="w2w_logs", name=experiment_name)
+    logger = CSVLogger(save_dir=MODELS_DIR, name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(ckpt_load, sort_key, descending) if ckpt_load is not None else None
+    ckpt = get_checkpoint_path(os.path.join(MODELS_DIR, LOGS_DIR), "step", True) if CKPT_LOAD is not None else None
 
     trainer.fit(gan, train_dataloaders=train_dataloader, ckpt_path=ckpt)
 
