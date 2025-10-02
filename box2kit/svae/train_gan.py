@@ -4,7 +4,7 @@ from torch import nn, optim
 from box2kit.svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE, GenerationCallback, TransferGAN, PairedWaveformDataset
 import torchaudio
 from torch.utils.data import DataLoader
-from box2kit.utils.load_data import load_dir, load_mono, reshape_data
+from box2kit.utils.load_data import load_dir, load_mono, reshape_data, load_configs
 from box2kit.utils.checkpoints import get_checkpoint_path
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from audiotools import AudioSignal
@@ -25,8 +25,6 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SAMPLE_RATE = 44100
 
 def main(args):
-    H_DIM = args.hdim
-    Z_DIM = args.zdim
     NUM_EPOCHS = args.epochs
     BATCH_SIZE = args.batchsize
     LR = args.lr
@@ -96,29 +94,31 @@ def main(args):
 
         
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
+    configs = load_configs("box2kit/configs")
+    print(configs)
+    # parser=argparse.ArgumentParser(description="Train single-instrument VAE model.")
 
-    parser.add_argument("--target", help="Location of target data.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output data.", type=str, metavar="path", required=True)
-    parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
-    parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
-    parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
-    parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
-    parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=1e-4)
-    parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
-    parser.add_argument("--subdiv", help="Segments per bar", metavar="divs", type=int, default=8)
-    parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
-    parser.add_argument("--testout", help="Name of output test file dir", type=str, metavar="dirname", default=None)
-    parser.add_argument("--testfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
-    parser.add_argument("--ckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
-    parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
-    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
-    parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
-    parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
-    parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
-    parser.add_argument("--mog", help="Number of Gaussian mixture modes in prior. 0 for standard Gaussian.", type=int, metavar="modes", default=0)
-    parser.add_argument("--beta", help="Set importance of KL divergence in generator cost function.", type=float, metavar="beta", default=1)
-    parser.add_argument("--vtarget", help="Location of validation target audio files.", type=str, metavar="path", default=None)
-    parser.add_argument("--voutput", help="Location of validation output audio files.", type=str, metavar="path", default=None)
-    args=parser.parse_args()
-    main(args)
+    # parser.add_argument("--target", help="Location of target data.", type=str, metavar="path", required=True)
+    # parser.add_argument("--output", help="Location of output data.", type=str, metavar="path", required=True)
+    # parser.add_argument("--hdim", help="Number of hidden layer neurons", type=int, metavar="ndims", default=64)
+    # parser.add_argument("--zdim", help="Number of latent space variables", type=int, metavar="ndims", default=8)
+    # parser.add_argument("--epochs", help="Max number of training epochs", type=int, metavar="epochs", default=100)
+    # parser.add_argument("--batchsize", help="Batch size", type=int, metavar="size", default=32)
+    # parser.add_argument("--lr", help="Optimizer learning rate", type=float, metavar="rate", default=1e-4)
+    # parser.add_argument("--bpm", help="Model tempo", metavar="bpm", type=int, default=90)
+    # parser.add_argument("--subdiv", help="Segments per bar", metavar="divs", type=int, default=8)
+    # parser.add_argument("--test", help="Test model on audio file after training", type=str, metavar="audio_file_path", default=None)
+    # parser.add_argument("--testout", help="Name of output test file dir", type=str, metavar="dirname", default=None)
+    # parser.add_argument("--testfreq", help="How often to generate test outputs (once every <epochs>)", type=int, metavar="epochs", default=5)
+    # parser.add_argument("--ckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
+    # parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
+    # parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
+    # parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="lightning_logs")
+    # parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
+    # parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=250)
+    # parser.add_argument("--mog", help="Number of Gaussian mixture modes in prior. 0 for standard Gaussian.", type=int, metavar="modes", default=0)
+    # parser.add_argument("--beta", help="Set importance of KL divergence in generator cost function.", type=float, metavar="beta", default=1)
+    # parser.add_argument("--vtarget", help="Location of validation target audio files.", type=str, metavar="path", default=None)
+    # parser.add_argument("--voutput", help="Location of validation output audio files.", type=str, metavar="path", default=None)
+    # args=parser.parse_args()
+    # main(args)

@@ -1,0 +1,8 @@
+training_target_path: "training/target" # Relative path to training target instrument recordings in data folder
+training_output_path: "training/output" # Relative path to training output instrument recordings in data folder
+validation_target_path: "validation/target" # Relative path to validation target instrument recordings in data folder
+validation_output_path: "validation/output" # Relative path to validation output instrument recordings in data folder
+
+models: "models" # Relative path to model checkpoints in project root folder
+
+user_config: "user" # Relative path to user-made config subfolder in configs folder (overrides default configs)

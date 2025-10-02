@@ -2,6 +2,7 @@ import torch
 import torchaudio
 from torch.utils.data import DataLoader
 import os
+import yaml
 
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio, sr = torchaudio.load(file_name)
@@ -60,3 +61,16 @@ def mkdir(dir_path: str):
     except FileExistsError:
         pass
     return dir_path
+
+def load_configs(config_dir: str) -> dict:
+    default_folder = "default"
+
+    with open(f"{config_dir}/{default_folder}/global.yaml", "r") as f:
+        user_folder = yaml.load(f)["user_config"]
+    
+    config_folder = f"{config_dir}/{user_folder}" if os.path.exists(f"{config_dir}/{user_folder}") else f"{config_dir}/{default_folder}"
+
+    file_list = os.listdir(config_folder)
+    configs = {file_name[:-5]: yaml.load(open(f"{config_folder}/{file_name}", "r")) for file_name in file_list}
+
+    return configs
