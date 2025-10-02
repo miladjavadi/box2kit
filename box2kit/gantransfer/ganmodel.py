@@ -557,7 +557,7 @@ class GenerationCallback(Callback):
             with torch.inference_mode():
                 test_latents = codec.encode(test_segs)[0]
                 test_out_latents = pl_module(test_latents)
-                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length_in_samples]
+                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length]
                 reconstructed_wave = test_out_segs.reshape(1, -1)
 
             torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
@@ -569,12 +569,12 @@ class GenerationCallback(Callback):
 
         if self.output_test:
             test_wave = [load_mono(self.test_file, codec.sample_rate)]
-            test_segs = reshape_data(test_wave, pl_module.block_length_in_samples).to(codec.device)
+            test_segs = reshape_data(test_wave, pl_module.input_block_length).to(codec.device)
 
             with torch.inference_mode():
                 test_latents = codec.encode(test_segs)[0]
                 test_out_latents = pl_module(test_latents)
-                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length_in_samples]
+                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length]
                 reconstructed_wave = test_out_segs.reshape(1, -1)
 
             torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
