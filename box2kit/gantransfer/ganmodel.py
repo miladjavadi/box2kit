@@ -498,7 +498,7 @@ class DACGANV2(pl.LightningModule):
 
         with torch.no_grad():
             gen = self.codec.decode(Z_gen)
-            output_post = self.code.decode(Z_output)
+            output_post = self.codec.decode(Z_output)
 
         gen_AS = AudioSignal(gen, self.sr)
         output_AS = AudioSignal(output_post, self.sr)
