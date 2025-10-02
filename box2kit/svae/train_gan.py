@@ -110,6 +110,7 @@ def main(args, configs):
         
 if __name__ == "__main__":
     configs = load_configs("box2kit/configs")
+    print(configs)
     
     parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
     parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")
