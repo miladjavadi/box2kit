@@ -561,6 +561,7 @@ class GenerationCallback(Callback):
                 test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length_in_samples]
                 reconstructed_wave = test_out_segs.reshape(1, -1)
 
+            print(self.out_path)
             torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
         return super().on_train_epoch_end(trainer, pl_module)
     
