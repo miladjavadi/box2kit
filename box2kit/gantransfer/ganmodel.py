@@ -8,6 +8,8 @@ import torch.utils.data
 import numpy as np
 import pytorch_lightning as pl
 from audiotools import AudioSignal
+from pytorch_lightning.callbacks import Callback
+from box2kit.utils.load_data import load_mono, reshape_data
 
 import dac
 import torchaudio
@@ -368,12 +370,14 @@ class DACGANV2(pl.LightningModule):
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
                  spectral_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
                  mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None], loss_fn=nn.MSELoss()),
-                 warmup: int = 250):
+                 warmup: int = 250,
+                 lr = 1e-4):
         super().__init__()
 
         self.generator, self.discriminator = self.initialize_models(spectrum_dims, nfft)
         self.codec = codec
         self.sr = codec.sample_rate
+        self.lr = lr
 
         self.spectral_loss_fn = spectral_loss_fn
         self.mel_loss_fn = mel_loss_fn
@@ -504,8 +508,8 @@ class DACGANV2(pl.LightningModule):
         self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
     def configure_optimizers(self):
-        gen_optimizer = optim.Adam(self.generator.parameters(), lr=0.00002, betas=(0.5, 0.999))
-        discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        gen_optimizer = optim.Adam(self.generator.parameters(), lr=self.lr, betas=(0.5, 0.999))
+        discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(0.5, 0.999))
         return [gen_optimizer, discr_optimizer], []
     
     def on_train_epoch_start(self):
@@ -523,6 +527,42 @@ class DACGANV2(pl.LightningModule):
     
     def on_validation_epoch_start(self):
         self.codec.eval()
+
+class GenerationCallback(Callback):
+    def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
+        self.test_file = test_file
+        self.test_freq = test_freq
+        self.out_dir = out_dir
+        self.block_length = block_length
+
+        self.output_test = self.test_file is not None and self.out_dir is not None
+
+    def on_train_start(self, trainer, pl_module):
+        log_path = trainer.logger.log_dir
+        if self.output_test:
+            try:
+                os.mkdir(os.path.join(log_path, self.out_dir))
+            except FileExistsError:
+                pass
+            self.out_path = os.path.join(log_path, self.out_dir)
+        return super().on_train_start(trainer, pl_module)
+    
+    def on_train_epoch_end(self, trainer, pl_module):
+        epoch = pl_module.trainer.current_epoch
+        codec = pl_module.codec
+
+        if epoch % self.test_freq == 0 and self.output_test:
+            test_wave = [load_mono(self.test_file, codec.sample_rate)]
+            test_segs = reshape_data(test_wave, pl_module.block_length_in_samples).to(codec.device)
+
+            with torch.inference_mode():
+                test_latents = codec.encode(test_segs)[0]
+                test_out_latents = pl_module(test_latents)
+                test_out_segs = codec.decode(test_out_latents)[:,:pl_module.output_block_length_in_samples]
+                reconstructed_wave = test_out_segs.reshape(1, -1)
+
+            torchaudio.save(f"{self.out_path}/epoch_{epoch}.wav", reconstructed_wave.cpu(), codec.sample_rate)
+        return super().on_train_epoch_end(trainer, pl_module)
         
 
 ### UTILITY FUNCTIONS

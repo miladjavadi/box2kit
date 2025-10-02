@@ -9,7 +9,6 @@ import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 import yaml
 
@@ -17,6 +16,7 @@ import dac
 import torchaudio
 from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
 from box2kit.utils.callbacks import DelayedEarlyStopping
+from box2kit.utils.load_data import mkdir, load_configs
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
@@ -140,6 +140,7 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 
     return checkpoint
 
+
 def main(args):
     target_dir = args.target
     output_dir = args.out
@@ -201,25 +202,17 @@ def main(args):
 
 
 if __name__ == "__main__":
+    configs = load_configs("box2kit/configs")
     parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <target>/x.wav should have a corresponding <out>/x.wav.")
-
-    parser.add_argument("--target", help="Location of target audio files.", type=str, metavar="path", required=True)
-    parser.add_argument("--out", help="Location of output audio files.", type=str, metavar="path", required=True)
-    parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
-    parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
-    parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
-    parser.add_argument("--maxepochs", help="Maximum number of training epochs.", type=int, metavar="epochs", default=1000)
-    parser.add_argument("--loadckpt", help="Resume training from checkpoint in lightning_logs folder.", type=str, metavar="checkpoint_folder_path", default=None)
-    parser.add_argument("--ckptkey", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
-    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
-    parser.add_argument("--lemb", help="Set importance of embedding loss in generator cost function.", type=float, metavar="lambda", default=1)
-    parser.add_argument("--ladv", help="Set importance of adversarial loss in generator cost function.", type=float, metavar="lambda", default=1)
-    parser.add_argument("--warmup", help="Number of epochs in warmup phase (no discriminator)", type=int, metavar="epochs", default=500)
-    parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="neural_logs")
-    parser.add_argument("--vtarget", help="Location of validation target audio files.", type=str, metavar="path", default=None)
-    parser.add_argument("--voutput", help="Location of validation output audio files.", type=str, metavar="path", default=None)
+    
+    parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
+    parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")
+    parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
+    parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
+    parser.add_argument("--name", help="Name of experiment", type=str, metavar="name", default="default_logs")
+    
     args=parser.parse_args()
-    main(args)
+    main(args, configs)
 
