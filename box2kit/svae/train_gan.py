@@ -4,7 +4,7 @@ from torch import nn, optim
 from box2kit.svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE, GenerationCallback, TransferGAN, PairedWaveformDataset
 import torchaudio
 from torch.utils.data import DataLoader
-from box2kit.utils.load_data import load_dir, load_mono, reshape_data, load_configs
+from box2kit.utils.load_data import load_dir, load_mono, reshape_data, load_configs, mkdir
 from box2kit.utils.checkpoints import get_checkpoint_path
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from audiotools import AudioSignal
@@ -43,7 +43,7 @@ def main(args, configs):
     BETA = model_config["beta"]
     PHI = model_config["phi"]
 
-    MODELS_DIR = global_config["models"]
+    MODELS_DIR = mkdir(global_config["models"])
     LOGS_DIR = model_config["logs"]
     TEST_FREQ = model_config["test_freq"]
 
@@ -62,10 +62,10 @@ def main(args, configs):
     # trunc_block_length = (block_length//2048)*2048
     # remainder = block_length % 2048
 
-    train_target_dir = f"{DATA_PATH}/{TRAIN_TARGET_PATH}"
-    train_output_dir = f"{DATA_PATH}/{TRAIN_OUTPUT_PATH}"
-    val_target_dir = f"{DATA_PATH}/{VAL_TARGET_PATH}"
-    val_output_dir = f"{DATA_PATH}/{VAL_OUTPUT_PATH}"
+    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
+    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
+    val_target_dir = os.path.join(DATA_PATH, VAL_TARGET_PATH)
+    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
 
     train_dataset = PairedWaveformDataset(train_target_dir, train_output_dir, block_length, SAMPLE_RATE)
     train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -116,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path", required=True)
     parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
     parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
+    parser.add_argument("--name", help="Name of experiment", type=str, metavar="name", default="default_logs")
     
     args=parser.parse_args()
     main(args, configs)
