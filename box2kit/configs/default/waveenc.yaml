@@ -8,7 +8,7 @@ mog: 0 # Number of Gaussian mixture modes in prior. For standard prior, use mog 
 ### Training routine
 epochs: 10000 # Maximum number of training epochs
 batch_size: 32 # Number of data points per mini-batch
-lr: 1e-4 # Optimizer learning rates
+lr: 1.e-4 # Optimizer learning rates
 warmup: 5000 # Length of "warmup phase" in epochs, i.e. how long before the discriminator is initialized. For training with no discriminator, use warmup > epochs.
 es_delay: 6500 # How many epochs to wait before early-stopping condition is activated, if validation data is used
 beta: 1 # Set importance of KL divergence in generator cost function (max value, annealed over training)
