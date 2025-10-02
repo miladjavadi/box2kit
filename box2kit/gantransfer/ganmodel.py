@@ -552,7 +552,7 @@ class GenerationCallback(Callback):
 
         if epoch % self.test_freq == 0 and self.output_test:
             test_wave = [load_mono(self.test_file, codec.sample_rate)]
-            test_segs = reshape_data(test_wave, pl_module.block_length_in_samples).to(codec.device)
+            test_segs = reshape_data(test_wave, pl_module.input_block_length).to(codec.device)
 
             with torch.inference_mode():
                 test_latents = codec.encode(test_segs)[0]
