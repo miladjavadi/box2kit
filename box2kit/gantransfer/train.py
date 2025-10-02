@@ -186,10 +186,11 @@ def main(args, configs):
 
     train_dataloader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
 
-    if val_target_dir is None or val_output_dir is None:
-        val_loader = None
-    else:
+    if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
         val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
+    else:
+        print("No validation data found, skipping model validation.")
+        val_loader = None
 
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
@@ -207,14 +208,12 @@ def main(args, configs):
     if val_loader is not None:
         callbacks = ([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
-    logger = CSVLogger(save_dir=MODELS_DIR, name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
-    trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
-
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(os.path.join(MODELS_DIR, LOGS_DIR), "step", True) if CKPT_LOAD is not None else None
 
-    trainer.fit(gan, train_dataloaders=train_dataloader, ckpt_path=ckpt)
+    logger = CSVLogger(save_dir=MODELS_DIR, name=EXPERIMENT_NAME)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
+    trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
