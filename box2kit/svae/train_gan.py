@@ -113,7 +113,7 @@ if __name__ == "__main__":
     print(configs)
     
     parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
-    parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path", required=True)
+    parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")
     parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
     parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--name", help="Name of experiment", type=str, metavar="name", default="default_logs")
