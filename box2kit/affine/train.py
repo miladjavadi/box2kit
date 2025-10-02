@@ -6,10 +6,17 @@ import numpy as np
 
 from box2kit.utils import load_data as uload
 from box2kit.affine.model import AffineTransfer
+import datetime
+import os
 
+# Constants
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-def main(args):
+def main(args, configs):
+    global_config = configs["global"]
+    model_config = configs["affine"]
+
+    # Configurables
     TEMPO = args.tempo
     SUBDIV = args.subdiv
     BATCH_SIZE = args.batchsize
@@ -19,21 +26,38 @@ def main(args):
     N_SAMPLES = args.samples
     INL_THRESHOLD = args.threshold
 
-    TARGET_DIR = args.target
-    OUTPUT_DIR = args.output
+    TRAIN_TARGET_PATH = global_config["training_target_path"]
+    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
+    VAL_TARGET_PATH = global_config["validation_target_path"]
+    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+
+    MODELS_PATH = global_config["models"]
+
+    # command-line arguments
+    DATA_PATH = args.data
+    EXPERIMENT_NAME = args.name
+
+    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
+    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
+    val_target_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+
+    save_path = os.path.join(MODELS_PATH, f"{EXPERIMENT_NAME}.pt")
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
-    model_sr = codec.sample_rate
+    SAMPLE_RATE = codec.sample_rate
 
-    segment_length_in_samples = int(model_sr*4*60/(SUBDIV*TEMPO))
+    segment_length_in_samples = int(SAMPLE_RATE*4*60/(SUBDIV*TEMPO))
 
     with torch.inference_mode():
-        target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
+        target_waves, _ = uload.load_dir(train_target_dir, SAMPLE_RATE)
+        target_waves.extend(uload.load_dir(val_target_dir, SAMPLE_RATE)[0])
         target_segs = uload.reshape_data(target_waves, segment_length_in_samples).to(DEVICE)
         target_latent_segs = uload.safe_encode(target_segs, codec, BATCH_SIZE)
         target_vecs = target_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
-        output_waves, _ = uload.load_dir(OUTPUT_DIR, model_sr)
+        output_waves, _ = uload.load_dir(train_output_dir, SAMPLE_RATE)
+        output_waves.extend(uload.load_dir(val_output_dir, SAMPLE_RATE)[0])
         output_segs = uload.reshape_data(output_waves, segment_length_in_samples).to(DEVICE)
         output_latent_segs = uload.safe_encode(output_segs, codec, BATCH_SIZE)
         output_vecs = output_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
@@ -41,22 +65,17 @@ def main(args):
         gen_model = AffineTransfer(1024)
         gen_model.fit(target_vecs, output_vecs, N_TRIALS, INL_THRESHOLD, N_SAMPLES)
 
-    with open(f"{EXP_NAME}.pkl", 'wb') as file:
+    with open(f"{save_path}.pkl", 'wb') as file:
         pkl.dump(gen_model, file)
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
-    "File pairs must have the same names within their respective directories.\n"
-    "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-    parser.add_argument("--target", help="Location of target audio files.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output audio files.", type=str, metavar="path", required=True)
-    parser.add_argument("--tempo", help="Reference tempo against which to divide audio blocks. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
-    parser.add_argument("--subdiv", help="Subdivisions against which to divide audio blocks. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long chunks at 90 BPM.", type=int, metavar="subdivisions", default=8)
-    parser.add_argument("--batchsize", help="Number of data point pairs per mini-batch.", type=int, metavar="batch_size", default=16)
-    parser.add_argument("--name", help="Name of experiment.", type=str, metavar="experiment_name", default="affine_transform")
-    parser.add_argument("--trials", help="Number of RANSAC candidates.", type=int, metavar="candidates", default=100)
-    parser.add_argument("--samples", help="Number of points used to derive each candidate transform.", type=int, metavar="points", default=256)
-    parser.add_argument("--threshold", help="L2 distance threshold for inliers.", type=int, default=100)
-    args = parser.parse_args()
-    main(args)
+    configs = uload.load_configs("box2kit/configs")
+    
+    parser=argparse.ArgumentParser(description="Generate paired instrument codebook for match search transfer model.")
+    parser.add_argument("data", help="Location of training and validaiton data (For this model, training and validation data are combined and used for training).", type=str, metavar="path")
+    parser.add_argument("--name", help="Name of codebook.", type=str, metavar="name", default=timestamp)
+    
+    args=parser.parse_args()
+    main(args, configs)

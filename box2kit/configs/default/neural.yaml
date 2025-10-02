@@ -12,5 +12,5 @@ beta: 1 # Set importance of LSD in generator cost function (max value, annealed 
 phi: 0.01 # Set importance of adversarial loss in generator cost function
 
 ### Output
-logs: "neural_logs" # Relative path to waveform encoder checkpoints in model folder
+logs: "neural_logs" # Relative path to neural transfer checkpoints in model folder
 test_freq: 100 # How often (in epochs) to generate test output, if test file is used 

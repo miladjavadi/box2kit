@@ -1,0 +1,10 @@
+### Model configuration
+tempo: 90 # Tempo of recorded performances [bpm]
+subdiv: 8 # Data point segmenents per whole-note in recording
+batch_size: 16 # Number of data points per mini-batch
+trials: 100 # Number of RANSAC candidates
+samples: 256 # Number of points used to derive each candidate
+threshold: 1000 # L2 distance threshold for inliers
+
+### Output
+logs: "affine" # Relative path to affine transformation parameters in model folder

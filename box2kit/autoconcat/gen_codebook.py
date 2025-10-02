@@ -4,58 +4,73 @@ from box2kit.autoconcat.model import PairedCodebook, MatchSearchTransfer
 import torch
 import argparse
 import datetime
-
+import os
 
 import box2kit.utils.load_data as uload
 
-# constants
+# Constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SAMPLE_RATE = 48000
 
-def main(args):
-    BATCH_SIZE = args.batchsize
-    TEMPO = args.bpm
-    SUBDIVS = args.subdiv
+def main(args, configs):
+    global_config = configs["global"]
+    model_config = configs["match"]
+
+    # Configurables
+    TEMPO = model_config["tempo"]
+    SUBDIVS = model_config["subdiv"]
+    BATCH_SIZE = model_config["batch_size"]
+    CODEBOOK_LENGTH = model_config["codebook_length"]
+
+    TRAIN_TARGET_PATH = global_config["training_target_path"]
+    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
+    VAL_TARGET_PATH = global_config["validation_target_path"]
+    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+
+    MODELS_PATH = global_config["models"]
+
+    # command-line arguments
+    DATA_PATH = args.data
     EXPERIMENT_NAME = args.name
-    CODEBOOK_LENGTH = args.len
-    SPLIT = args.split
 
-    TARGET_DIR = args.target
-    OUTPUT_DIR = args.output
+    codebook_path = os.path.join(MODELS_PATH, f"{EXPERIMENT_NAME}.pt")
 
-    dac_model = dac.DAC.load(dac.utils.download()).to(DEVICE)
-    model_sr = dac_model.sample_rate
-    seg_length_in_samples = int(model_sr*60/(TEMPO*SUBDIVS/4))
+    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
+    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
+    val_target_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
 
-    target_waves, _ = uload.load_dir(TARGET_DIR, model_sr)
-    output_waves, _ = uload.load_dir(OUTPUT_DIR, model_sr)
+    codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
+    SAMPLE_RATE = codec.sample_rate
+    seg_length_in_samples = int(SAMPLE_RATE*60/(TEMPO*SUBDIVS/4))
 
-    target_waveform_segs = uload.reshape_data(target_waves, seg_length_in_samples).to(DEVICE)
-    output_waveform_segs = uload.reshape_data(output_waves, seg_length_in_samples).to(DEVICE)
+    train_target_waves, _ = uload.load_dir(train_target_dir, SAMPLE_RATE)
+    train_output_waves, _ = uload.load_dir(train_output_dir, SAMPLE_RATE)
+    val_target_waves, _ = uload.load_dir(val_target_dir, SAMPLE_RATE)
+    val_output_waves, _ = uload.load_dir(val_output_dir, SAMPLE_RATE)
 
-    paired_waveform_segs = torch.cat((target_waveform_segs, output_waveform_segs), dim=1) # cat along channel direction
+    train_target_waveform_segs = uload.reshape_data(train_target_waves, seg_length_in_samples).to(DEVICE)
+    train_output_waveform_segs = uload.reshape_data(train_output_waves, seg_length_in_samples).to(DEVICE)
+    val_target_waveform_segs = uload.reshape_data(val_target_waves, seg_length_in_samples).to(DEVICE)
+    val_output_waveform_segs = uload.reshape_data(val_output_waves, seg_length_in_samples).to(DEVICE)
 
-    train_waveform_data, val_waveform_data = uload.binary_split(paired_waveform_segs, SPLIT)
+    train_waveform_data = torch.cat((train_target_waveform_segs, train_output_waveform_segs), dim=1) # cat along channel direction
+    val_waveform_data = torch.cat((val_target_waveform_segs, val_output_waveform_segs), dim=1)
 
-    train_data = torch.stack([uload.safe_encode(train_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
-    val_data = torch.stack([uload.safe_encode(val_waveform_data[:,i,:].unsqueeze(1), dac_model) for i in range(2)], dim=1)
+    train_data = torch.stack([uload.safe_encode(train_waveform_data[:,i,:].unsqueeze(1), codec) for i in range(2)], dim=1)
+    val_data = torch.stack([uload.safe_encode(val_waveform_data[:,i,:].unsqueeze(1), codec) for i in range(2)], dim=1)
 
     codebook = PairedCodebook(train_data, val_data, seg_length_in_samples, CODEBOOK_LENGTH)
 
-    torch.save(codebook, f"{EXPERIMENT_NAME}.pt")
+    torch.save(codebook, codebook_path)
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-    parser=argparse.ArgumentParser(description="Generate codebook for match search transfer model.")
-
-    parser.add_argument("--target", help="Location of target instrument training data.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output instrument training data.", type=str, metavar="path", required=True)
-    parser.add_argument("--batchsize", help="Batch size for point pair distance calculation.", type=int, metavar="size", default=32)
-    parser.add_argument("--name", help="Name of codebook.", type=str, metavar="codebook_name", default=f"{uload.mkdir('codebooks')}/{timestamp}")
-    parser.add_argument("--bpm", help="Reference tempo against which to divide audio segments. Should ideally match the tempo of the audio data.", type=float, metavar="bpm", default=90)
-    parser.add_argument("--subdiv", help="Subdivisions against which to divide audio segments. For instance, \"--tempo 90 --subdiv 8\" means that audio waveforms will be divided into 1/8th note long segments at 90 bpm.", type=int, metavar="subdivisions", default=8)
-    parser.add_argument("--len", help="Codebook length.", type=int, metavar="length", default=512)
-    parser.add_argument("--split", help="Ratio of training data.", type=float, metavar="ratio", default=0.8)
+    configs = uload.load_configs("box2kit/configs")
+    
+    parser=argparse.ArgumentParser(description="Generate paired instrument codebook for match search transfer model.")
+    parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")
+    parser.add_argument("--name", help="Name of codebook.", type=str, metavar="name", default=timestamp)
+    
     args=parser.parse_args()
-    main(args)
+    main(args, configs)
