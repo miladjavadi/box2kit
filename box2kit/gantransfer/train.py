@@ -14,7 +14,7 @@ import yaml
 
 import dac
 import torchaudio
-from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2
+from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2, GenerationCallback
 from box2kit.utils.callbacks import DelayedEarlyStopping
 from box2kit.utils.load_data import mkdir, load_configs
 
@@ -142,6 +142,8 @@ def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 NFFT = 1024
+TEST_OUT = "test_out"
+
 def main(args, configs):
     global_config = configs["global"]
     model_config = configs["neural"]
@@ -178,7 +180,7 @@ def main(args, configs):
     val_target_dir = os.path.join(DATA_PATH, VAL_TARGET_PATH)
     val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
 
-    codec = dac.DAC.load(dac.utils.download()).to(device) # type: ignore
+    codec = dac.DAC.load(dac.utils.download()).to(DEVICE) # type: ignore
     SAMPLE_RATE = codec.sample_rate
     block_length_in_samples = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
 
@@ -201,10 +203,9 @@ def main(args, configs):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], NFFT, BETA, PHI, codec, warmup=WARMUP, lr=LR)
 
+    callbacks = [GenerationCallback(TEST_FILE, TEST_OUT, TEST_FREQ)]
     if val_loader is not None:
         callbacks = ([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
-    else:
-        callbacks = None
     
     logger = CSVLogger(save_dir=MODELS_DIR, name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
