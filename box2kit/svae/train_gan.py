@@ -26,7 +26,7 @@ NFFT = 1024
 TEST_OUT = "test_out"
 
 def main(args, configs):
-    global_config = configs["configs"]
+    global_config = configs["global"]
     model_config = configs["waveenc"]
 
     # configurables
