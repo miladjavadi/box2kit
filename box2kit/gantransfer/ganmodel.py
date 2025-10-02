@@ -529,11 +529,10 @@ class DACGANV2(pl.LightningModule):
         self.codec.eval()
 
 class GenerationCallback(Callback):
-    def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
+    def __init__(self, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
         self.test_freq = test_freq
         self.out_dir = out_dir
-        self.block_length = block_length
 
         self.output_test = self.test_file is not None and self.out_dir is not None
 
