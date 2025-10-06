@@ -8,7 +8,8 @@ class DelayedEarlyStopping(EarlyStopping):
         super().__init__(**kwargs)
         self.warmup_length = warmup_length
     
-    def on_validation_end(self, trainer, pl_module):
+    def on_validation_epoch_end(self, trainer, pl_module):
         if trainer.current_epoch < self.warmup_length:
+            print(trainer.current_epoch, self.warmup_length)
             return
         return super().on_validation_end(trainer, pl_module)
