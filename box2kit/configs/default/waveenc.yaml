@@ -10,7 +10,7 @@ epochs: 10000 # Maximum number of training epochs
 batch_size: 32 # Number of data points per mini-batch
 lr: 1.e-4 # Optimizer learning rates
 warmup: 5000 # Length of "warmup phase" in epochs, i.e. how long before the discriminator is initialized. For training with no discriminator, use warmup > epochs.
-es_delay: 6500 # How many epochs to wait before early-stopping condition is activated, if validation data is used
+es_delay: 6500 # How many epochs to wait before early stopping condition is activated, if validation data is used. Set to "None" for early stopping throughout training, or (epochs - 1) to disable early stopping.
 beta: 1 # Set importance of KL divergence in generator cost function (max value, annealed over training)
 phi: 0.01 # Set importance of adversarial loss in generator cost function
 

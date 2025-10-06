@@ -24,94 +24,86 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 # constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NFFT = 1024
-TEST_OUT = "test_out"
+test_output_folder = "test_out"
 
 def main(args, configs):
     global_config = configs["global"]
     model_config = configs["waveenc"]
 
     # configurables
-    SAMPLE_RATE = model_config["sample_rate"]
-    TEMPO = model_config["tempo"]
-    SUBDIV = model_config["subdiv"]
-    NMOG = model_config["mog"]
+    sample_rate = model_config["sample_rate"]
+    tempo = model_config["tempo"]
+    subdiv = model_config["subdiv"]
+    nmog = model_config["mog"]
 
-    NUM_EPOCHS = model_config["epochs"]
-    BATCH_SIZE = model_config["batch_size"]
-    LR = model_config["lr"]
-    WARMUP = model_config["warmup"]
-    ES_DELAY = model_config["es_delay"]
-    BETA = model_config["beta"]
-    PHI = model_config["phi"]
+    max_epochs = model_config["epochs"]
+    batch_size = model_config["batch_size"]
+    lr = model_config["lr"]
+    warmup = model_config["warmup"]
+    early_stopping_delay = model_config["es_delay"]
+    beta = model_config["beta"]
+    phi = model_config["phi"]
 
-    MODELS_DIR = mkdir(global_config["models"])
-    LOGS_DIR = model_config["logs"]
-    TEST_FREQ = model_config["test_freq"]
+    models_dir = mkdir(global_config["models"])
+    logs_dir = model_config["logs"]
+    test_freq = model_config["test_freq"]
 
-    TRAIN_TARGET_PATH = global_config["training_target_path"]
-    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
-    VAL_TARGET_PATH = global_config["validation_target_path"]
-    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+    train_target_path = global_config["training_target_path"]
+    train_output_path = global_config["training_output_path"]
+    val_target_path = global_config["validation_target_path"]
+    val_output_path = global_config["validation_output_path"]
 
     # command-line arguments
-    DATA_PATH = args.data
-    EXPERIMENT_NAME = args.name
-    CKPT_LOAD = args.ckpt
-    TEST_FILE = args.test
+    data_path = args.data
+    experiment_name = args.name
+    ckpt_load = args.ckpt
+    test_file = args.test
 
-    block_length = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
-    # trunc_block_length = (block_length//2048)*2048
-    # remainder = block_length % 2048
+    # full-length signals are divided into segments according to tempo
+    segment_length = int(sample_rate*60/(tempo*subdiv/4)) 
 
-    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
-    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
-    val_target_dir = os.path.join(DATA_PATH, VAL_TARGET_PATH)
-    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+    train_target_dir = os.path.join(data_path, train_target_path)
+    train_output_dir = os.path.join(data_path, train_output_path)
+    val_target_dir = os.path.join(data_path, val_target_path)
+    val_output_dir = os.path.join(data_path, val_output_path)
 
-    train_dataset = PairedWaveformDataset(train_target_dir, train_output_dir, block_length, SAMPLE_RATE)
-    train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_dataset = PairedWaveformDataset(train_target_dir, train_output_dir, segment_length, sample_rate)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
     if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
-        val_dataset = PairedWaveformDataset(val_target_dir, val_output_dir, block_length, SAMPLE_RATE)
-        val_loader = DataLoader(dataset=val_dataset, batch_size = BATCH_SIZE, shuffle=True)
+        val_dataset = PairedWaveformDataset(val_target_dir, val_output_dir, segment_length, sample_rate)
+        val_loader = DataLoader(dataset=val_dataset, batch_size = batch_size, shuffle=True)
     else:
         print("No validation data found, skipping model validation.")
         val_loader = None
 
-    # model = SingleVAE(block_length, H_DIM, Z_DIM).to(DEVICE)
-    # model = PQMFVAE(pqmf).to(DEVICE)
-    # optimizer = optim.Adam(model.parameters(), lr=LR)
-    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, NUM_EPOCHS, eta_min=0.0, last_epoch=-1)
-
-    # # spectral losses from Descript's AudioTools
-    # mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None])
-    # full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32])
-    # mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16])
-
+    # calculate stft dims of audio segments to initialize stft discriminator
     with torch.inference_mode():
         dummy = train_dataset[0][0]
         dummy_stft = torch.stft(dummy.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=dummy.device)).abs()
 
-    model = TransferGAN(block_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=NMOG, lr=LR, lambda_adversarial=PHI, warmup=WARMUP, beta=BETA)
+    model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta)
 
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(CKPT_LOAD, "step", True) if CKPT_LOAD is not None else None
+    ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
-    # checkpoint_monitor = "val_loss" if val_loader is not None else "g_loss"
+    callbacks = []
 
-    callbacks = [GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]
+    # generate occasional test outputs from provided test file
+    if test_file is not None:
+        callbacks = [GenerationCallback(segment_length, test_file, test_output_folder, test_freq)]
 
+    # use early stopping and model checkpoints if validation data is provided
     if val_loader is not None:
-        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=1, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
-    logger = CSVLogger(save_dir=os.path.join(MODELS_DIR, LOGS_DIR), name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks, min_epochs=ES_DELAY) # type: ignore
+    logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
         
 if __name__ == "__main__":
     configs = load_configs("box2kit/configs")
-    print(configs)
     
     parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
     parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")

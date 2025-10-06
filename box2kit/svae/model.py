@@ -257,11 +257,11 @@ class TransferGAN(LightningVAE):
                  full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4,
-                 lambda_adversarial: float = 1,
+                 phi: float = 1,
                  warmup: int = 250,
                  beta: float = 1
                  ):
-        self.lambda_adversarial = lambda_adversarial
+        self.lambda_adversarial = phi
         super().__init__(block_length,
                          pqmf,
                          sample_rate,
