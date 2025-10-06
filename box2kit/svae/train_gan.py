@@ -101,7 +101,7 @@ def main(args, configs):
     callbacks = [GenerationCallback(block_length, TEST_FILE ,TEST_OUT, TEST_FREQ)]
 
     if val_loader is not None:
-        callbacks.extend([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks.extend([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=1, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
     
     logger = CSVLogger(save_dir=os.path.join(MODELS_DIR, LOGS_DIR), name=EXPERIMENT_NAME)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
