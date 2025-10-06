@@ -57,11 +57,9 @@ def main(args):
 
         torchaudio.save(f"{output_dir}/{file_name}", reconstructed_waveform.unsqueeze(0).detach().cpu(), model_sr)
 
+
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.")
-    # parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained generator model.\n"
-    # "File pairs must have the same names within their respective directories.\n"
-    # "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
+    parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained neural transfer model.")
 
     parser.add_argument("--input", help="Path to input audio folder.", type=str, metavar="path", required=True)
     parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)

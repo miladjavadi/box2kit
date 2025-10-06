@@ -15,7 +15,6 @@ import numpy as np
 import sklearn
 from sklearn.linear_model import LinearRegression
 from sklearn.base import clone
-# from sklearn.multioutput import MultiOutputRegressor
 
 class AffineLightning(pl.LightningModule):
     def __init__(self,
@@ -164,6 +163,7 @@ class AffineTransferOld(nn.Module):
             y_hat = self.A @ x + self.b # Ax == Ax[:,i] for columns i in x
             return y_hat
     
+
 class GenerationCallback(Callback):
     def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
@@ -209,11 +209,6 @@ class GenerationCallback(Callback):
         pl_module.adversarial_phase = True if trainer.current_epoch >= pl_module.warmup else False
         return super().on_train_epoch_start(trainer, pl_module)
 
-    # def on_fit_epoch_start(self):
-    #     self.codec.eval()
-    
-    # def on_validation_epoch_start(self):
-    #     self.codec.eval()
 
 class AffineTransfer():
     def __init__(self, input_dim: int = 1024):
@@ -269,14 +264,6 @@ class AffineTransfer():
     
     def __call__(self, targets):
         return self.estimator.predict(targets)
-
-    # def transform_sequence(self, targets, A, b):
-    #     transformed = np.stack([self.transform_vector(target, A, b) for target in targets], axis=0)
-    #     return transformed
-    
-    # def transform_vector(self, target, A, b):
-    #     transformed = A @ target + b
-    #     return transformed
     
     
 if __name__ == "__main__":

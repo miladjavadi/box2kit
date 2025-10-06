@@ -78,7 +78,8 @@ def main(args, configs):
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
-    callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
+    # callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
+    callbacks = []
 
     # generate occasional test outputs from provided test file
     if test_file is not None:
@@ -86,7 +87,7 @@ def main(args, configs):
 
     # use early stopping and model checkpoints if validation data is provided
     if val_loader is not None:
-        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}")])
+        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True)])
     
     logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore
