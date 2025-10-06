@@ -4,6 +4,23 @@ from torch.utils.data import DataLoader
 import os
 import yaml
 
+class PairedWaveformDataset(torch.utils.data.Dataset):
+    def __init__(self, query_dir, target_dir, segment_length, sr=44100):
+        self.query_data = reshape_data(load_dir(query_dir, sr)[0], segment_length)
+        self.target_data = reshape_data(load_dir(target_dir, sr)[0], segment_length)
+
+        if self.query_data.shape != self.target_data.shape:
+            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.query_data.shape}, while target dataset has shape {self.target_data.shape})")
+    
+    def __len__(self):
+        return self.query_data.shape[0]
+    
+    def __getitem__(self, idx: int):
+        x = self.query_data[idx]
+        y = self.target_data[idx]
+        return x, y
+
+
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio, sr = torchaudio.load(file_name)
     if audio.shape[0] > 1:
@@ -15,10 +32,12 @@ def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio = audio.clamp(-1, 1)
     return audio
 
+
 def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
     files = sorted(os.listdir(dir))
     waves = [load_mono((f"{dir}/{file}"), target_sr) for file in files if file[-4:] == ".wav"]
     return waves, files
+
 
 def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.FloatTensor:
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths]
@@ -34,11 +53,13 @@ def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.Floa
     
     return dataset
 
+
 def binary_split(data, split=0.8):
     n = data.size(0)
     perm = torch.randperm(n)
     split_n = int(n * split)
     return data[perm[:split_n]], data[perm[split_n:]]
+
 
 def safe_encode(data, codec, batch_size=8):
     with torch.inference_mode():
@@ -46,14 +67,17 @@ def safe_encode(data, codec, batch_size=8):
         latents = torch.cat(latents, dim=0)
     return latents
 
+
 def safe_decode(data, codec, batch_size=8):
     with torch.inference_mode():
         latents = [codec.decode(latent) for latent in batch_partition(data, batch_size)]
         latents = torch.cat(latents, dim=0)
     return latents
 
+
 def batch_partition(dataset, batch_size: int = 64):
     return [dataset[i:i+batch_size] for i in range(0, dataset.shape[0], batch_size)]
+
 
 def mkdir(dir_path: str):
     try:
@@ -61,6 +85,7 @@ def mkdir(dir_path: str):
     except FileExistsError:
         pass
     return dir_path
+
 
 def load_configs(config_dir: str) -> dict:
     default_folder = "default"

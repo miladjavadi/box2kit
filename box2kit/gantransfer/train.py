@@ -14,9 +14,10 @@ import yaml
 
 import dac
 import torchaudio
-from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN, DACGANV2, GenerationCallback
+from box2kit.gantransfer.ganmodel import DACGANV2, GenerationCallback
 from box2kit.utils.callbacks import DelayedEarlyStopping
-from box2kit.utils.load_data import mkdir, load_configs
+from box2kit.utils.load_data import mkdir, load_configs, reshape_data, PairedWaveformDataset
+from box2kit.utils.checkpoints import get_checkpoint_path
 
 # Load audio file
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
@@ -30,20 +31,6 @@ def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
     audio = audio.clamp(-1, 1)
     return audio
 
-def reshape_dataset(waveforms: list[torch.Tensor], block_length_in_samples: int) -> torch.Tensor:
-    # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths_in_samples]
-
-    dataset = torch.zeros((0, block_length_in_samples), device=waveforms[0].device)
-    for waveform in waveforms:
-        # trim waveform to whole number of block lengths
-        waveform = waveform[:,:((waveform.shape[1]//block_length_in_samples)*block_length_in_samples)]
-
-        # reshape waveform into blocks
-        blocks = torch.reshape(waveform, (-1, block_length_in_samples))
-        dataset = torch.cat((dataset, blocks), dim=0)
-    
-    dataset = dataset.unsqueeze(1)
-    return dataset
 
 def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str) -> torch.utils.data.DataLoader:
     query_files = sorted(os.listdir(query_dir))
@@ -53,141 +40,62 @@ def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples:
     query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr).to(device) for file in query_files if file[-4:] == ".wav"]
     target_waveforms = [load_mono((f"{target_dir}/{file}"), model_sr).to(device) for file in target_files if file[-4:] == ".wav"]
 
-    query_dataset = reshape_dataset(query_waveforms, block_length_in_samples)
-    target_dataset = reshape_dataset(target_waveforms, block_length_in_samples)
+    query_dataset = reshape_data(query_waveforms, block_length_in_samples)
+    target_dataset = reshape_data(target_waveforms, block_length_in_samples)
     paired_dataset = PairedWaveformDataset(query_dataset, target_dataset)
     dataloader = torch.utils.data.DataLoader(paired_dataset, batch_size=batch_size, shuffle=True)
 
     return dataloader
 
-# deprecated in favor of lightning-embedded training
-def training_procedure(gen_model, discr_model, dac_model, dataloader, epochs, device) -> None:
-    embedding_loss_fn = nn.MSELoss()
-    adversarial_loss_fn = nn.BCELoss()
-    lambda_embedding = 100
-
-    gen_optimizer = optim.Adam(gen_model.parameters(), lr=0.00002, betas=(0.5, 0.999))
-    discr_optimizer = optim.Adam(discr_model.parameters(), lr=0.00002, betas=(0.5, 0.999))
-
-    real_label = 1
-    fake_label = 0
-
-    for i in range(epochs):
-        for batch_nr, (query, target) in enumerate(dataloader):
-            with torch.no_grad():
-                Z_query = dac_model.encode(query)[0]
-                Z_target = dac_model.encode(target)[0]
-
-            # train discriminator
-            Z_transformed = gen_model(Z_query).detach()
-            
-            with torch.no_grad():
-                transformed_decoded = dac_model.decode(Z_transformed)
-
-            target = target[:,:,:transformed_decoded.shape[2]] # trim tail of target that is lost when decoding
-            
-            d_real = discr_model(Z_query, target)
-            d_fake = discr_model(Z_query, transformed_decoded)
-
-            real_labels = torch.full(d_real.shape, real_label, device=device, dtype=torch.float32)
-            real_adversarial_loss = adversarial_loss_fn(d_real, real_labels)
-
-            fake_labels = torch.full(d_fake.shape, fake_label, device=device, dtype=torch.float32)
-            fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
-
-            discr_loss = real_adversarial_loss + fake_adversarial_loss
-            discr_optimizer.zero_grad()
-            discr_loss.backward(retain_graph=True)
-            discr_optimizer.step()
-
-            # train generator
-            
-            Z_transformed = gen_model(Z_query)
-            embedding_loss = embedding_loss_fn(Z_transformed, Z_target)
-
-            d_fake = discr_model(Z_query, transformed_decoded)
-            fake_adversarial_loss = adversarial_loss_fn(d_fake, fake_labels)
-
-            gen_loss = 1/fake_adversarial_loss + lambda_embedding * embedding_loss
-            gen_optimizer.zero_grad()
-            gen_loss.backward()
-            gen_optimizer.step()
-
-def get_checkpoint_path(checkpoint_folder: str, key: str = "step", descending: bool = True) -> str:
-    checkpoint_files = [file for file in os.listdir(f"{checkpoint_folder}/checkpoints") if file[-5:] == ".ckpt"]
-
-    checkpoints = [dict([["name", name]] + [attribute.split("=") for attribute in name.split("-")]) for name in checkpoint_files]
-    
-    try:
-        checkpoint_name = sorted(checkpoints, key = lambda d: d[key], reverse = descending)[0]["name"]
-    
-    except KeyError:
-        raise KeyError(f'Key "{key}" not found in checkpoint file name.')
-    
-    checkpoint_path = f"{checkpoint_folder}/checkpoints/{checkpoint_name}"
-    return checkpoint_path
-
-def load_checkpoint(checkpoint_folder: str, codec, device: str, key: str = "step", descending: bool = True):
-    hparams_file = f"{checkpoint_folder}/hparams.yaml"
-
-    with open(hparams_file) as f:
-        hparams = yaml.safe_load(f)
-
-    checkpoint_path = get_checkpoint_path(checkpoint_folder, key, descending=descending)
-
-    # checkpoint = DACGAN.load_from_checkpoint(checkpoint_path, codec=codec, device=device, **hparams)
-    checkpoint = DACGANV2.load_from_checkpoint(checkpoint_path, map_location=torch.device(device), **hparams)
-
-    return checkpoint
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 NFFT = 1024
-TEST_OUT = "test_out"
+test_output_folder = "test_out"
 
 def main(args, configs):
     global_config = configs["global"]
     model_config = configs["neural"]
 
     # configurables
-    TEMPO = model_config["tempo"]
-    SUBDIV = model_config["subdiv"]
+    tempo = model_config["tempo"]
+    subdiv = model_config["subdiv"]
 
-    NUM_EPOCHS = model_config["epochs"]
-    BATCH_SIZE = model_config["batch_size"]
-    LR = model_config["lr"]
-    WARMUP = model_config["warmup"]
-    ES_DELAY = model_config["es_delay"]
-    BETA = model_config["beta"]
-    PHI = model_config["phi"]
+    max_epochs = model_config["epochs"]
+    batch_size = model_config["batch_size"]
+    lr = model_config["lr"]
+    warmup = model_config["warmup"]
+    es_delay = model_config["es_delay"]
+    beta = model_config["beta"]
+    phi = model_config["phi"]
 
-    MODELS_DIR = mkdir(global_config["models"])
-    LOGS_DIR = model_config["logs"]
-    TEST_FREQ = model_config["test_freq"]
+    models_dir = mkdir(global_config["models"])
+    logs_dir = model_config["logs"]
+    test_freq = model_config["test_freq"]
 
-    TRAIN_TARGET_PATH = global_config["training_target_path"]
-    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
-    VAL_TARGET_PATH = global_config["validation_target_path"]
-    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+    train_target_path = global_config["training_target_path"]
+    train_output_path = global_config["training_output_path"]
+    val_target_path = global_config["validation_target_path"]
+    val_output_path = global_config["validation_output_path"]
 
     # command-line arguments
-    DATA_PATH = args.data
-    EXPERIMENT_NAME = args.name
-    CKPT_LOAD = args.ckpt
-    TEST_FILE = args.test
+    data_path = args.data
+    experiment_name = args.name
+    ckpt_load = args.ckpt
+    test_file = args.test
 
-    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
-    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
-    val_target_dir = os.path.join(DATA_PATH, VAL_TARGET_PATH)
-    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+    train_target_dir = os.path.join(data_path, train_target_path)
+    train_output_dir = os.path.join(data_path, train_output_path)
+    val_target_dir = os.path.join(data_path, val_target_path)
+    val_output_dir = os.path.join(data_path, val_output_path)
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE) # type: ignore
-    SAMPLE_RATE = codec.sample_rate
-    block_length_in_samples = int(SAMPLE_RATE*60/(TEMPO*SUBDIV/4))
+    sample_rate = codec.sample_rate
+    block_length_in_samples = int(sample_rate*60/(tempo*subdiv/4))
 
-    train_dataloader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
+    train_dataloader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE)
 
     if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
-        val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, BATCH_SIZE, SAMPLE_RATE, DEVICE)
+        val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE)
     else:
         print("No validation data found, skipping model validation.")
         val_loader = None
@@ -202,23 +110,27 @@ def main(args, configs):
         dummy_stft = torch.stft(output_block.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=output_block.device)).abs()
 
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
-    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], NFFT, BETA, PHI, codec, warmup=WARMUP, lr=LR)
+    gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], NFFT, beta, phi, codec, warmup=warmup, lr=lr)
 
-    callbacks = [GenerationCallback(TEST_FILE, TEST_OUT, TEST_FREQ)]
+    callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
+
+    if test_file is not None:
+        callbacks.append(GenerationCallback(test_file, test_output_folder, test_freq))
     if val_loader is not None:
-        callbacks.extend([DelayedEarlyStopping(ES_DELAY, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
-    
-    # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(CKPT_LOAD, "step", True) if CKPT_LOAD is not None else None
+        callbacks.extend([DelayedEarlyStopping(es_delay, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}")])
 
-    logger = CSVLogger(save_dir=os.path.join(MODELS_DIR, LOGS_DIR), name=EXPERIMENT_NAME)
-    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=NUM_EPOCHS, logger=logger, callbacks=callbacks) # type: ignore
+
+    # load from previously saved checkpoint, if provided
+    ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
+
+    logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
+    trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
     configs = load_configs("box2kit/configs")
-    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
+    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/target datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <target>/x.wav should have a corresponding <out>/x.wav.")
     
@@ -230,4 +142,3 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     main(args, configs)
-

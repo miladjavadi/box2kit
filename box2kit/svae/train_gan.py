@@ -1,21 +1,12 @@
 import torch
-from tqdm import tqdm
-from torch import nn, optim
-from box2kit.svae.model import SingleVAE, WaveSegmentDataset, PQMFVAE, GenerationCallback, TransferGAN, PairedWaveformDataset
-import torchaudio
+from box2kit.svae.model import GenerationCallback, TransferGAN
 from torch.utils.data import DataLoader
-from box2kit.utils.load_data import load_dir, load_mono, reshape_data, load_configs, mkdir
+from box2kit.utils.load_data import load_configs, mkdir, PairedWaveformDataset
 from box2kit.utils.checkpoints import get_checkpoint_path
-from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
-from audiotools import AudioSignal
-from torch.utils.tensorboard import SummaryWriter
 import argparse
-import math
 import os
-from box2kit.svae.rave_pqmf import PQMF
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from box2kit.utils.callbacks import DelayedEarlyStopping
+from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
@@ -87,15 +78,15 @@ def main(args, configs):
     # load from previously saved checkpoint, if provided
     ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
-    callbacks = []
+    callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
 
     # generate occasional test outputs from provided test file
     if test_file is not None:
-        callbacks = [GenerationCallback(segment_length, test_file, test_output_folder, test_freq)]
+        callbacks.append(GenerationCallback(segment_length, test_file, test_output_folder, test_freq))
 
     # use early stopping and model checkpoints if validation data is provided
     if val_loader is not None:
-        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")])
+        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}")])
     
     logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore

@@ -13,106 +13,6 @@ from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from box2kit.gantransfer.ganmodel import DiscriminatorV2
 import os
 
-class WaveSegmentDataset(torch.utils.data.Dataset):
-    def __init__(self, dir, segment_length, sr=44100):
-        self.waves = reshape_data(load_dir(dir, sr), segment_length)
-        self.sr = sr
-
-    def __len__(self):
-        return self.waves.shape[0]
-    
-    def __getitem__(self, idx):
-        return self.waves[idx]
-
-class PairedWaveformDataset(torch.utils.data.Dataset):
-    def __init__(self, query_dir, target_dir, segment_length, sr=44100):
-        # if query_data.shape != target_data.shape:
-        #     raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {query_data.shape}, while target dataset has shape {target_data.shape})")
-        # self.query_data = query_data
-        # self.target_data = target_data
-
-        self.query_data = reshape_data(load_dir(query_dir, sr)[0], segment_length)
-        self.target_data = reshape_data(load_dir(target_dir, sr)[0], segment_length)
-
-        if self.query_data.shape != self.target_data.shape:
-            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.query_data.shape}, while target dataset has shape {self.target_data.shape})")
-    
-    def __len__(self):
-        return self.query_data.shape[0]
-    
-    def __getitem__(self, idx: int):
-        x = self.query_data[idx]
-        y = self.target_data[idx]
-        return x, y
-
-class SingleVAE(nn.Module):
-    def __init__(self, input_dim, h_dim=200, z_dim=8, n_channels = 1, sr = 44100, n_kernels = 64):
-        super().__init__()
-        self.block_length = input_dim
-        self.h_dim = h_dim
-        self.z_dim = z_dim 
-        self.n_channels = n_channels
-        self.nfft = 400
-        self.sr = sr
-        self.nmels = 32
-        self.hop_length = self.nfft//2
-        self.n_kernels = n_kernels
-
-        self.mel = torchaudio.transforms.MelSpectrogram(sample_rate = self.sr, n_fft = self.nfft, n_mels = self.nmels, hop_length = self.hop_length)
-        self.db = torchaudio.transforms.AmplitudeToDB()
-
-        # encoder
-        # self.wav2hid = nn.Sequential(
-        #     nn.Conv1d(n_channels, h_dim//4, kernel_size=3, stride=2, padding=(3-1)//2, dilation=1),
-        #     nn.ReLU(),
-        #     nn.Conv1d(h_dim//4, h_dim//2, kernel_size=5, stride=2, padding=(5-1)//2, dilation=2),
-        #     nn.ReLU(),
-        #     nn.Conv1d(h_dim//2, h_dim, kernel_size=5, stride=2, padding=(5-1)//2, dilation=2),
-        #     nn.ReLU(),
-        #     nn.AdaptiveAvgPool1d(1)
-        # )
-        self.mel2hid = nn.Linear(self.nmels*(1 + (self.block_length + 2 * (self.nfft//2) - self.nfft)//self.hop_length), h_dim)
-        self.hid2mu = nn.Linear(h_dim, z_dim)
-        self.hid2sigma = nn.Linear(h_dim, z_dim)
-
-        # decoder
-        self.z2hid = nn.Linear(z_dim, n_kernels*input_dim//16) # same flattened length as flattened pre-pooled hidden output
-        self.hid2wav = nn.Sequential(
-            LinterConvTranspose1D(n_kernels, n_kernels//2, kernel_size=3, stride=2, padding=(3-1)//2),
-            nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//2, n_kernels//4, kernel_size=3, stride=2, padding=(3-1)//2),
-            nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//4, n_kernels//8, kernel_size=3, stride=2, padding=(3-1)//2),
-            nn.ReLU(),
-            LinterConvTranspose1D(n_kernels//8, n_channels, kernel_size=3, stride=2, padding=(3-1)//2)
-        )
-
-        self.relu = nn.ReLU()
-
-    def encode(self, x):
-        x = x.view(x.shape[0] * x.shape[1], x.shape[2])
-        mel_db = self.db(self.mel(x))
-
-        h = self.relu(self.mel2hid(mel_db.reshape(mel_db.shape[0], -1)))
-        mu, sigma = self.hid2mu(h), self.hid2sigma(h)
-        return mu, sigma
-
-    def decode(self, z):
-        h = self.relu(self.z2hid(z))
-        unpooled = h.view(z.shape[0], self.n_kernels, self.block_length//16) # same shape as pre-pooled hidden output
-        x_hat = torch.tanh(self.hid2wav(unpooled))
-        return x_hat
-
-    def forward(self, x):
-        mu, sigma = self.encode(x)
-        epsilon = torch.randn_like(sigma)
-
-        z_reparam = mu + sigma*epsilon
-        x_hat = self.decode(z_reparam)
-
-        return x_hat, mu, sigma
-
-# current
 class LightningVAE(pl.LightningModule):
     def __init__(self,
                  block_length: int,
@@ -181,65 +81,7 @@ class LightningVAE(pl.LightningModule):
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         return [optimizer], []
     
-class TransferVAE(LightningVAE):
-    def __init__(self,
-                 block_length: int,
-                 pqmf: PQMF = PQMF(),
-                 sample_rate: int = 44100,
-                 nkernels: list[int] = [64, 128, 256, 512],
-                 kernel_sizes: list[int] = [3, 3, 3, 3],
-                 zdim: int = 128,
-                 nchannels: int = 1,
-                 strides: list[int] = [4, 4, 4, 2],
-                 dilations: list[int] = [1, 3, 9],
-                 nmog: int = 0,
-                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[1024], n_mels = [128], mel_fmin=[0], mel_fmax=[None]),
-                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
-                 mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
-                 lr = 1e-4):
-        super().__init__(block_length,
-                         pqmf,
-                         sample_rate,
-                         nkernels,
-                         kernel_sizes,
-                         zdim,
-                         nchannels,
-                         strides,
-                         dilations,
-                         nmog,
-                         mel_loss_fn,
-                         full_stft_loss_fn,
-                         mb_stft_loss_fn,
-                         lr)
-    
-    def training_step(self, batch, batch_idx):
-        x, y = batch
 
-        # forward
-
-        y_hat, mu, log_var = self.model(x)
-        y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
-
-        # losses
-        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
-        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) + self.full_stft_loss_fn(y_hat_AS, y_AS)
-
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(y_hat), self.model.sr), AudioSignal(self.model.pqmf(y), self.model.sr))
-        reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
-
-        kl_div = self.model.prior(mu, log_var)
-
-        # backprop
-        beta = cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs)
-        loss = reconstruction_loss + beta*kl_div
-
-        self.log("loss", loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
-        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
-        self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
-        self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
-        return loss
-
-# current
 class TransferGAN(LightningVAE):
     def __init__(self,
                  block_length: int,
@@ -296,19 +138,6 @@ class TransferGAN(LightningVAE):
         self.toggle_optimizer(gen_optimizer)
 
         y_hat, mu, log_var = self.model(x)
-
-        # if torch.isnan(y_hat).any():
-        #     print("kunt")
-        # else:
-        #     print("the dark knight rises")
-
-        # if torch.isnan(mu).any():
-        #     print("fuck")
-        # else:
-        #     print("safe")
-
-        # if torch.isnan(log_var).any():
-        #     print("ass")
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
@@ -398,6 +227,7 @@ class TransferGAN(LightningVAE):
         discr_optimizer = optim.Adam(self.discriminator.parameters(), lr=self.lr)
         return [gen_optimizer, discr_optimizer], []
 
+
 # current
 class PQMFVAE(nn.Module):
     """
@@ -459,11 +289,9 @@ class PQMFVAE(nn.Module):
         x_pad = critical_pad(x, 16)
         # x_pad = x[..., :((x.shape[-1]//16)*16)]
         x_mb = self.pqmf(x_pad)
-        # if torch.isnan(x_mb).any():
-        #     print("labubu")
+
         h = self.pqmf2hid(x_mb)
-        # if torch.isnan(h).any():
-        #     print("blud")
+
         mu, log_var = self.hid2mu(h), self.hid2sigma(h)
         return mu, log_var
     
@@ -484,6 +312,7 @@ class PQMFVAE(nn.Module):
 
         return x_hat, mu, log_var
 
+
 class MOGPrior(nn.Module):
     def __init__(self, zdim: int, n_components: int):
         super().__init__()
@@ -502,55 +331,20 @@ class MOGPrior(nn.Module):
             self.log_vars = None
     
     def kld_estimate(self, post_mean, post_log_var):
-        # weights = torch.softmax(self.weight_logits, 0)
         log_weights = torch.log_softmax(self.weight_logits, 0)
-        # print(self.means.shape, self.log_vars.shape, post_mean.shape, post_log_var.shape)
-
-        # if torch.isnan(self.means + self.log_vars).any() or torch.isinf(self.means + self.log_vars).any():
-        #     print("prior fucked")
-        # else:
-        #     print("prior safe")
-
         kld_components = torch.stack([kld_component(mean.reshape(1, -1, 1), log_var.reshape(1, -1, 1), post_mean, post_log_var) for (mean, log_var) in zip(self.means, self.log_vars)]) # [M, B, T]
-        # print(kld_components.shape)
-        
-        # if torch.isnan(kld_components).any() or torch.isinf(kld_components).any():
-        #     print("kld_components fucked")
-        # else:
-        #     print("kld_components safe")
-
-        # exp_sum = torch.sum(weights.reshape(-1, 1, 1) * torch.exp(-kld_components), dim=0) # [B, T]
-
-        # if torch.isnan(exp_sum).any() or torch.isinf(exp_sum).any():
-        #     print("exp_sum fucked")
-        # else:
-        #     print("exp_sum safe")
-
-        # elbo = -torch.log(exp_sum)
-
         elbo = -torch.logsumexp(log_weights.reshape(-1, 1, 1) - kld_components, dim=0)
-
-        # if torch.isnan(elbo).any() or torch.isinf(elbo).any():
-        #     print("elbo fucked")
-        # else:
-        #     print("elbo safe")
-
-        # print(elbo.shape)
-
         return elbo
     
     def forward(self, post_mean, post_log_var):
         if self.weight_logits is not None:
             kld = torch.mean(self.kld_estimate(post_mean, post_log_var), dim=-1)
-            # if torch.isnan(kld).any() or torch.isinf(kld).any():
-            #     print("kld forward is fucked")
-            # else:
-            #     print("kld forward is safe")
         else:
-            # if no trainable prior is used, use closed form kld expression with standard gaussian prior
+            # if no trainable prior is used, use closed-form kld expression with standard gaussian prior
             kld = torch.mean(kld_component(0, 0, post_mean, post_log_var), dim=-1)
         
         return kld # [B]
+
 
 class EncoderStack(nn.Module):
     def __init__(self,
@@ -585,6 +379,7 @@ class EncoderStack(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+
 class ResidualStack(nn.Module):
     def __init__(self,
                  nkernels: int,
@@ -610,6 +405,7 @@ class ResidualStack(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+
 class ResidualAdd(nn.Module):
     def __init__(self, pre, post):
         super().__init__()
@@ -618,6 +414,7 @@ class ResidualAdd(nn.Module):
 
     def forward(self, x):
         return self.pre(x) + self.post(x)
+
 
 class UpsamplingLayer(nn.Module):
     def __init__(self,
@@ -638,6 +435,7 @@ class UpsamplingLayer(nn.Module):
     
     def forward(self, x):
         return self.net(x)
+
 
 class DecoderStack(nn.Module):
     def __init__(self,
@@ -666,6 +464,7 @@ class DecoderStack(nn.Module):
     
     def forward(self, x):
         return self.net(x)
+
 
 class NoiseGenerator(nn.Module):
     def __init__(
@@ -703,7 +502,7 @@ class NoiseGenerator(nn.Module):
 
     def forward(self, x):
         in_len = x.shape[-1]
-        # noise synthesis will be truncated to nearest mult of self.target_size.
+        # noise synthesis will be truncated to nearest multiple of self.target_size.
         # to compensate, we first pad signal to next multiple...
         x = critical_pad(x, self.target_size)
         amp = mod_sigmoid(self.net(x) - 5)
@@ -763,6 +562,7 @@ class GenerationCallback(Callback):
             torchaudio.save(f"{self.out_path}/epoch_{pl_module.trainer.current_epoch}.wav", reconstructed_wave.cpu(), pl_module.model.sr)
         return super().on_train_end(trainer, pl_module)
 
+
 class LinterConvTranspose1D(nn.Module):
     def __init__(self,
                  input_dim: int,
@@ -790,6 +590,7 @@ class LinterConvTranspose1D(nn.Module):
 
         return y
 
+
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
         """
         Computes 'same' padding given a kernel size, stride an dilation.
@@ -812,22 +613,27 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
         else:
             raise Exception(f"Padding mode {mode} is not valid")
         return (p_left, p_right)
-        # return p_right
+
 
 def cos_annealed_beta(current_step, n_warmup_steps):
     return 0.5*(1- math.cos(current_step * math.pi / n_warmup_steps)) if current_step < n_warmup_steps else 1
 
+
 def lin_annealed_beta(current_step, total_steps):
     return min(1.0, current_step / total_steps)
+
 
 def warm_cos_annealed_beta(current_step, total_steps):
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
+
 def kld_component(prior_mean: torch.Tensor, prior_log_var: torch.Tensor, post_mean: torch.Tensor, post_log_var: torch.Tensor):
     return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.exp(post_log_var - prior_log_var) - (post_log_var - prior_log_var) - 1, (-2))
 
+
 def mod_sigmoid(x):
     return 2 * torch.sigmoid(x)**2.3 + 1e-7
+
 
 def amp_to_impulse_response(amp, target_size):
     """
@@ -855,6 +661,7 @@ def amp_to_impulse_response(amp, target_size):
 
     return amp
 
+
 def fft_convolve(signal, kernel):
     """
     convolves signal by kernel on the last dimension
@@ -870,6 +677,7 @@ def fft_convolve(signal, kernel):
 
     return output
 
+
 def hinge_loss(score: torch.Tensor, label: float):
     zeros = torch.zeros_like(score)
     if label > 0:
@@ -877,6 +685,7 @@ def hinge_loss(score: torch.Tensor, label: float):
     else:
         return torch.mean(torch.min(zeros, -label + score))
     
+
 def critical_pad(signal: torch.Tensor, divisor: int):
     """
     zero-pads the last dim of a signal such that its total length is perfectly divisible by an integer divisor.
@@ -885,6 +694,8 @@ def critical_pad(signal: torch.Tensor, divisor: int):
 
     return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
 
+
+# stuff for debugging
 if __name__ == "__main__":
     x = critical_pad(torch.randn(4, 1, 48004), 16)
     pqmf = PQMF()

@@ -17,53 +17,53 @@ def main(args, configs):
     model_config = configs["affine"]
 
     # Configurables
-    TEMPO = args.tempo
-    SUBDIV = args.subdiv
-    BATCH_SIZE = args.batchsize
-    EXP_NAME = args.name
+    tempo = args.tempo
+    subdiv = args.subdiv
+    batch_size = args.batchsize
+    experiment_name = args.name
 
-    N_TRIALS = args.trials
-    N_SAMPLES = args.samples
-    INL_THRESHOLD = args.threshold
+    n_trials = args.trials
+    n_samples = args.samples
+    inlier_threshold = args.threshold
 
-    TRAIN_TARGET_PATH = global_config["training_target_path"]
-    TRAIN_OUTPUT_PATH = global_config["training_output_path"]
-    VAL_TARGET_PATH = global_config["validation_target_path"]
-    VAL_OUTPUT_PATH = global_config["validation_output_path"]
+    train_target_path = global_config["training_target_path"]
+    train_output_path = global_config["training_output_path"]
+    val_target_path = global_config["validation_target_path"]
+    val_output_path = global_config["validation_output_path"]
 
-    MODELS_PATH = global_config["models"]
+    models_path = global_config["models"]
 
     # command-line arguments
-    DATA_PATH = args.data
-    EXPERIMENT_NAME = args.name
+    data_path = args.data
+    experiment_name = args.name
 
-    train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
-    train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
-    val_target_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
-    val_output_dir = os.path.join(DATA_PATH, VAL_OUTPUT_PATH)
+    train_target_dir = os.path.join(data_path, train_target_path)
+    train_output_dir = os.path.join(data_path, train_output_path)
+    val_target_dir = os.path.join(data_path, val_output_path)
+    val_output_dir = os.path.join(data_path, val_output_path)
 
-    save_path = os.path.join(MODELS_PATH, f"{EXPERIMENT_NAME}.pt")
+    save_path = os.path.join(models_path, f"{experiment_name}.pt")
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
-    SAMPLE_RATE = codec.sample_rate
+    sample_rate = codec.sample_rate
 
-    segment_length_in_samples = int(SAMPLE_RATE*4*60/(SUBDIV*TEMPO))
+    segment_length_in_samples = int(sample_rate*4*60/(subdiv*tempo))
 
     with torch.inference_mode():
-        target_waves, _ = uload.load_dir(train_target_dir, SAMPLE_RATE)
-        target_waves.extend(uload.load_dir(val_target_dir, SAMPLE_RATE)[0])
+        target_waves, _ = uload.load_dir(train_target_dir, sample_rate)
+        target_waves.extend(uload.load_dir(val_target_dir, sample_rate)[0])
         target_segs = uload.reshape_data(target_waves, segment_length_in_samples).to(DEVICE)
-        target_latent_segs = uload.safe_encode(target_segs, codec, BATCH_SIZE)
+        target_latent_segs = uload.safe_encode(target_segs, codec, batch_size)
         target_vecs = target_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
-        output_waves, _ = uload.load_dir(train_output_dir, SAMPLE_RATE)
-        output_waves.extend(uload.load_dir(val_output_dir, SAMPLE_RATE)[0])
+        output_waves, _ = uload.load_dir(train_output_dir, sample_rate)
+        output_waves.extend(uload.load_dir(val_output_dir, sample_rate)[0])
         output_segs = uload.reshape_data(output_waves, segment_length_in_samples).to(DEVICE)
-        output_latent_segs = uload.safe_encode(output_segs, codec, BATCH_SIZE)
+        output_latent_segs = uload.safe_encode(output_segs, codec, batch_size)
         output_vecs = output_latent_segs.transpose(1,2).reshape(-1,1024).cpu().numpy()
 
         gen_model = AffineTransfer(1024)
-        gen_model.fit(target_vecs, output_vecs, N_TRIALS, INL_THRESHOLD, N_SAMPLES)
+        gen_model.fit(target_vecs, output_vecs, n_trials, inlier_threshold, n_samples)
 
     with open(f"{save_path}.pkl", 'wb') as file:
         pkl.dump(gen_model, file)
