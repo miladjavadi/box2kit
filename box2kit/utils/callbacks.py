@@ -10,6 +10,5 @@ class DelayedEarlyStopping(EarlyStopping):
     
     def on_validation_epoch_end(self, trainer, pl_module):
         if trainer.current_epoch < self.warmup_length:
-            print(trainer.current_epoch, self.warmup_length)
             return
-        return super().on_validation_end(trainer, pl_module)
+        return super().on_validation_epoch_end(trainer, pl_module)
