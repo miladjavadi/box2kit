@@ -11,18 +11,46 @@ By passing recordings from a different *target instrument* to an already trained
 What results are recordings that contain the same compositional and expressive information as the target instrument, but reproduced using the output instrument's timbre.
 
 However, as shown in the [report attached to this project]() (not yet published), this approach does not work particularly well in all cases.
+One such case is between percussion instruments with multiple distinct timbral "modes", for instance between beatboxing and acoustic drum kits.
+A more appropriate solution in those cases could be to use models that are explicitly trained to transfer timbre between a target-output instrument pair.
+Such models utilize *paired* target and output instrument recordings to derive timbral relationships between symbolically identical audio data.
+These kinds of models are what are primarily explored in this project.
 
 ## Model Types
 
-This repo contains four 
+This repo contains four types of models for performing explicitly paired target-output instrument timbre transfer.
 
-### Neural
+Three of these: *neural transform*, *match search*, and *affine transform*, are effectively vector transforms that are applied to latent space respresentations of audio signals, encoded using [Descript Audio Codec (DAC)](https://github.com/descriptinc/descript-audio-codec).
+There are two main reasons for this.
+Firstly, by using DAC as an interface for our models, we effectively bypass the need for our models to learn feature representation, as this is already accomplished by DAC.
+This potentially allows us to create sparser models, that are faster to train and less prone to overfitting when data is sparse, as is often the case for paired data modeling.
+Secondly, DAC uses a learned Residual Vector Quantization (RVQ) quantization system to compress encoded signals.
+This effectively restricts the output of the codec to "realistic" -- or domain-relevant -- frames of audio.
+In turn, this may allow us to "correct" for slight inaccuracies in the output of our models.
+
+A fourth model type, the *waveform autoencoder*, is a full waveform-to-waveform Variational Autoencoder (VAE).
+It serves as a baseline against which to compare the DAC-interfacing models, and to demonstrate the concept of paired instrument timbre transfer on its own.
+
+### Neural Transform
+Neural transform models use Convolutional Neural Networks (CNNs) to transform target instrument latent vectors to symbolically equivalent output instrument latent vectors.
+They are trained using a combination of waveform reconstruction loss, latent space distance, and adversarial loss.
 
 ### Match Search
+Training match search models involves using a greedy algorithm to construct a codebook containing sequences of paired target instrument and output instrument latent vectors.
+When new target recordings are passed, match search models segment them, and map each segment to their nearest neighboring target codebook entries in latent space.
+Each segment is then replaced with the respective output codebook entries.
+
+A $k$-order match search can be performed by matching each input segment with its $k$ nearest neighboring target codebook entries, and replacing it with the mean of their respective output codebook entries.
+The output is then re-mapped to the nearest neighboring ouptut codebook entry.
 
 ### Affine Transform
+Affine transform models use Random Sample Consensus (RANSAC) to derive an affine transform\
+$$q[i]=Ap[i] + b$$
+which maps target latent vectors $p[i]$ to symbolically equivalent output vectors $q[i]$.
 
 ### Waveform Autoencoder
+The waveform autoencoder used in this project is mostly a recreation of the [Realtime Variational Autoencoder (RAVE)](https://github.com/acids-ircam/RAVE).
+The main difference is that this implementation is adapted for cross-instrumental synthesis using paired training data, rather than identical reconstruction.
 
 ## Usage
 Each of the four model types are implemented as submodules inside the ```box2kit``` module.
