@@ -59,7 +59,7 @@ python -m box2kit.<model_type>.train path/to/data --name experiment_name --test 
 ```
 ```--name``` sets the name of the checkpoint folder/model file for the model within the respective model type's logs folder.
 ```--test``` (only available for model types ```neural``` and ```waveenc```) lets you provide an audio file to occasionally test your model during training.
-The available model types are ```match```, ```affine```, ```neural```, and ```waveenc```.
+The available model types are ```neural```, ```match```, ```affine```, and ```waveenc```.
 
 ### Model Configuration
 Several hyperparameters for model structure and training are configurable from the various configuration files found in ```box2kit/configs/```.
@@ -86,3 +86,4 @@ Input files must be contained in a folder, pointed to by the second positional a
 ```--output``` specifies the name of the output file directory.
 
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
+For ```neural``` and ```affine``` models, ```--requantize``` can be used to requantize the generated DAC-latents using DAC's RVQ.
