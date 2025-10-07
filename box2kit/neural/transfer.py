@@ -10,8 +10,7 @@ import yaml
 
 import dac
 import torchaudio
-from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGANV2
-from box2kit.gantransfer.train import load_mono, load_checkpoint
+from box2kit.neural.model import DACGANV2
 from box2kit.utils import load_data as uload
 
 def main(args):

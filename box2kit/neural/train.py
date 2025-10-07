@@ -14,7 +14,7 @@ import yaml
 
 import dac
 import torchaudio
-from box2kit.gantransfer.ganmodel import DACGANV2, GenerationCallback
+from box2kit.neural.model import DACGANV2, GenerationCallback
 from box2kit.utils.callbacks import DelayedEarlyStopping
 from box2kit.utils.load_data import mkdir, load_configs, reshape_data, PairedWaveformDataset
 from box2kit.utils.checkpoints import get_checkpoint_path

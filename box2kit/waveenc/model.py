@@ -7,10 +7,10 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 import torchaudio
 from box2kit.utils.load_data import load_dir, reshape_data, load_mono
-from box2kit.svae.rave_pqmf import PQMF
+from box2kit.waveenc.rave_pqmf import PQMF
 from audiotools import AudioSignal
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
-from box2kit.gantransfer.ganmodel import DiscriminatorV2
+from box2kit.neural.model import DiscriminatorV2
 import os
 
 class LightningVAE(pl.LightningModule):

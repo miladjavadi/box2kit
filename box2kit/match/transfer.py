@@ -1,6 +1,6 @@
 import dac
 import torchaudio
-from box2kit.autoconcat.model import PairedCodebook, MatchSearchTransfer
+from box2kit.match.model import PairedCodebook, MatchSearchTransfer
 import torch
 import argparse
 import os
@@ -21,14 +21,14 @@ def transfer(dir: str, file: str, order: int, codec: dac.DAC, gen_model: MatchSe
     return output_wave
 
 def main(args):
-    EXPERIMENT_NAME = args.name
-    INPUT_DIR = args.ins
-    OUTPUT_DIR = args.output
-    ORDER = args.order
+    experiment_name = args.name
+    input_dir = args.ins
+    output_dir = args.output
+    order = args.order
 
-    uload.mkdir(f"{OUTPUT_DIR}")
+    uload.mkdir(f"{output_dir}")
 
-    file_names = [file for file in sorted(os.listdir(INPUT_DIR)) if file[-4:] == ".wav"]
+    file_names = [file for file in sorted(os.listdir(input_dir)) if file[-4:] == ".wav"]
 
     with torch.inference_mode():
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -37,11 +37,11 @@ def main(args):
         model_sr = codec.sample_rate
 
         with torch.serialization.safe_globals([PairedCodebook]):
-            gen_model = MatchSearchTransfer(torch.load(EXPERIMENT_NAME, map_location=device))
+            gen_model = MatchSearchTransfer(torch.load(experiment_name, map_location=device))
 
         for file in file_names:
-            output = transfer(INPUT_DIR, file, ORDER, codec, gen_model)
-            torchaudio.save(f"{OUTPUT_DIR}/{file}", output.detach().cpu(), model_sr)
+            output = transfer(input_dir, file, order, codec, gen_model)
+            torchaudio.save(f"{output_dir}/{file}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")

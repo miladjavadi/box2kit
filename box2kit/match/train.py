@@ -1,6 +1,6 @@
 import dac
 import torchaudio
-from box2kit.autoconcat.model import PairedCodebook, MatchSearchTransfer
+from box2kit.match.model import PairedCodebook, MatchSearchTransfer
 import torch
 import argparse
 import datetime
@@ -62,6 +62,7 @@ def main(args, configs):
     codebook = PairedCodebook(train_data, val_data, seg_length_in_samples, CODEBOOK_LENGTH)
 
     torch.save(codebook, codebook_path)
+
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
