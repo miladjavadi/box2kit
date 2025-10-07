@@ -6,9 +6,23 @@ The idea for this project came from me wanting bespoke, natural-sounding acousti
 I spend a majority of my songwriting process in the voice memo app on my phone, where I usually beatbox placeholders for actual drum tracks.
 I figured that a fun, intuitive way to approach this problem could be through a piece of software which turns those beatboxed grooves into realistic-sounding acoustic drums. Hence, the name, *box2kit*.
 
-## Background
+Timbre transfer is conventionally accomplished using reconstructive models, such as autoencoders or concatenative synthesizers, that have been trained on single-instrument recordings.
+By passing recordings from a different *target instrument* to an already trained *output instrument* model, the internal features derived from those recordings are re-synthesized as if they were output instrument recordings.
+What results are recordings that contain the same compositional and expressive information as the target instrument, but reproduced using the output instrument's timbre.
+
+However, as shown in the [report attached to this project]() (not yet published), this approach does not work particularly well in all cases.
 
 ## Model Types
+
+This repo contains four 
+
+### Neural
+
+### Match Search
+
+### Affine Transform
+
+### Waveform Autoencoder
 
 ## Usage
 Each of the four model types are implemented as submodules inside the ```box2kit``` module.
