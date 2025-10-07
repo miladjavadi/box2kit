@@ -107,7 +107,7 @@ def load_configs(config_dir: str) -> dict:
     
     config_folder = os.path.join(config_dir, user_folder) if os.path.exists(os.path.join(config_dir, user_folder)) else os.path.join(config_dir, default_folder)
 
-    file_list = os.listdir(config_folder)
+    file_list = [file for file in os.listdir(config_folder) if file.endswith(".yaml") and not file.startswith(".")]
     configs = {file_name[:-5]: yaml.safe_load(open(os.path.join(config_folder, file_name), "r")) for file_name in file_list}
 
     return configs

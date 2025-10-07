@@ -87,7 +87,7 @@ def main(args, configs):
 
     # use early stopping and model checkpoints if validation data is provided
     if val_loader is not None:
-        callbacks.extend([EarlyStopping(monitor="val_loss", mode="min", patience=100, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True)])
+        callbacks.extend([ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True)])
     
     logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore
