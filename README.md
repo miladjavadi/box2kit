@@ -20,7 +20,7 @@ Each folder should contain two subfolders of **paired** target and output instru
 The recordings should be named such that each target recording ```.../target/x.wav``` has a symbolically identical output recording ```.../output/x.wav```.
 
 By default, the dataset file tree should look similar to this:
-```bash
+```
 └── data/
     ├── training/
     │   ├── target/
@@ -65,21 +65,21 @@ The available model types are ```neural```, ```match```, ```affine```, and ```wa
 Several hyperparameters for model structure and training are configurable from the various configuration files found in ```box2kit/configs/```.
 
 A default set of config files ```box2kit/configs/default``` is provided. However, modifications to these files may be overwritten upon re-pulling the repo. If you wish to make modifications to the model configurations, it is therefore recommended to first copy the ```default``` folder as follows:
-```bash
+```
 user@puter:<project_dir>/box2kit/configs$ cp -r default user 
 ```
 and make any modifications to the ```user```-contained configuration files.
 
 ### Training from Checkpoint
 Training can be resumed from an existing ```neural``` or ```waveenc``` checkpoint by passing it to the ```train``` script using the ```--ckpt``` flag:
-```bash
+```
 user@puter:<project_dir>$ python -m box2kit.<model_type>.train path/to/data --name experiment_name --ckpt models/.../checkpoint.ckpt
 ```
 Logs from the resumed model will be saved as a new version under the specified experiment name.
 
 ## Timbre Transfer
 Similar to for training, all model type submodules contain a respective ```transfer``` script, which follows a common syntax:
-```bash
+```
 python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --output output/files
 ```
 Input files must be contained in a folder, pointed to by the second positional argument.
