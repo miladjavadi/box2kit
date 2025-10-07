@@ -78,10 +78,11 @@ user@puter:<project_dir>$ python -m box2kit.<model_type>.train path/to/data --na
 Logs from the resumed model will be saved as a new version under the specified experiment name.
 
 ## Timbre Transfer
-Similar to for training, all model type submodules contain a respective ```transfer``` script, which follow the same syntax:
+Similar to for training, all model type submodules contain a respective ```transfer``` script, which follows a common syntax:
 ```bash
 python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --output output/files
 ```
 Input files must be contained in a folder, pointed to by the second positional argument.
 ```--output``` specifies the name of the output file directory.
+
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
