@@ -130,7 +130,7 @@ def main(args, configs):
 
 if __name__ == "__main__":
     configs = load_configs("box2kit/configs")
-    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/target datasets.\n"
+    parser=argparse.ArgumentParser(description="Train neural timbre transfer model using paired query/target datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <target>/x.wav should have a corresponding <out>/x.wav.")
     

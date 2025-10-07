@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     configs = uload.load_configs("box2kit/configs")
     
-    parser=argparse.ArgumentParser(description="Generate paired instrument codebook for match search transfer model.")
+    parser=argparse.ArgumentParser(description="Generate paired instrument affine transform.")
     parser.add_argument("data", help="Location of training and validaiton data (For this model, training and validation data are combined and used for training).", type=str, metavar="path")
     parser.add_argument("--name", help="Name of codebook.", type=str, metavar="name", default=timestamp)
     

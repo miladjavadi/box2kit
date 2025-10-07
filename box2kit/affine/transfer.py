@@ -11,27 +11,24 @@ from box2kit.affine.model import AffineTransfer
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def main(args):
-    # TEMPO = args.tempo
-    # SUBDIV = args.subdiv
-    # BATCH_SIZE = args.batchsize
-    MODEL_PATH = args.ckpt
+    model_path = args.ckpt
 
-    INPUT_DIR = args.ins
-    OUTPUT_DIR = args.output
+    input_dir = args.ins
+    output_dir = args.output
 
     requantize = args.rq
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     model_sr = codec.sample_rate
 
-    with open(MODEL_PATH, "rb") as file:
+    with open(model_path, "rb") as file:
         gen_model = pkl.load(file)
     
     # segment_length_in_samples = int(model_sr*4/(SUBDIV*TEMPO))
 
-    input_waves, file_names = uload.load_dir(INPUT_DIR, model_sr)
+    input_waves, file_names = uload.load_dir(input_dir, model_sr)
 
-    uload.mkdir(OUTPUT_DIR)
+    uload.mkdir(output_dir)
     
     with torch.inference_mode():
         for input_wave, file_name in zip(input_waves, file_names):
@@ -44,12 +41,10 @@ def main(args):
 
             output_wave = codec.decode(transformed_latents).reshape(1,-1)
 
-            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output_wave.detach().cpu(), model_sr)
+            torchaudio.save(f"{output_dir}/{file_name}", output_wave.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Train GAN-based timbre transfer model using paired query/carget datasets.\n"
-    "File pairs must have the same names within their respective directories.\n"
-    "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
+    parser=argparse.ArgumentParser(description="Transfer input recordings using pre-calculated affine transformation.")
 
     parser.add_argument("ckpt", help="Path to trained affine transformation.", type=str, metavar="ckpt_path", required=True)
     parser.add_argument("ins", help="Location of input audio files.", type=str, metavar="input_path", required=True)

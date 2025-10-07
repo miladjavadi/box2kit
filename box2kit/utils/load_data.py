@@ -40,6 +40,10 @@ def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
 
 
 def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.FloatTensor:
+    """
+    reshapes list of mono waveforms to a stack of audio segments
+
+    """
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths]
 
     dataset = torch.zeros((0, 1, block_length)).to(waveforms[0].device)
@@ -62,6 +66,10 @@ def binary_split(data, split=0.8):
 
 
 def safe_encode(data, codec, batch_size=8):
+    """
+    encodes audio segments in mini-batches to reduce gpu memory usage
+
+    """
     with torch.inference_mode():
         latents = [codec.encode(waveform)[0] for waveform in batch_partition(data, batch_size)]
         latents = torch.cat(latents, dim=0)
@@ -69,6 +77,10 @@ def safe_encode(data, codec, batch_size=8):
 
 
 def safe_decode(data, codec, batch_size=8):
+    """
+    decodes laten sequences in mini-batches to reduce gpu memory usage
+
+    """
     with torch.inference_mode():
         latents = [codec.decode(latent) for latent in batch_partition(data, batch_size)]
         latents = torch.cat(latents, dim=0)

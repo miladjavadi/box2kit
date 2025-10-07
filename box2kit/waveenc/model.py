@@ -150,8 +150,6 @@ class TransferGAN(LightningVAE):
 
         kl_div = torch.mean(self.model.prior(mu, log_var), dim=0) 
 
-        # print(reconstruction_loss, kl_div)
-
         if self.adversarial_phase:
             stft_gen = torch.stft(y_hat.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=y_hat.device), return_complex=True).abs()
             gen_score = self.discriminator(stft_gen)
@@ -695,7 +693,6 @@ def critical_pad(signal: torch.Tensor, divisor: int):
     return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
 
 
-# stuff for debugging
 if __name__ == "__main__":
     x = critical_pad(torch.randn(4, 1, 48004), 16)
     pqmf = PQMF()

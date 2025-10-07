@@ -1,5 +1,5 @@
 import torch
-from box2kit.svae.model import GenerationCallback, TransferGAN
+from box2kit.waveenc.model import GenerationCallback, TransferGAN
 from torch.utils.data import DataLoader
 from box2kit.utils.load_data import load_configs, mkdir, PairedWaveformDataset
 from box2kit.utils.checkpoints import get_checkpoint_path
