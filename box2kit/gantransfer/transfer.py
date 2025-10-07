@@ -10,13 +10,13 @@ import yaml
 
 import dac
 import torchaudio
-from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGAN
+from box2kit.gantransfer.ganmodel import Generator, Discriminator, PairedWaveformDataset, DACGANV2
 from box2kit.gantransfer.train import load_mono, load_checkpoint
 from box2kit.utils import load_data as uload
 
 def main(args):
     input_dir = args.input
-    ckpt_folder = args.ckpt
+    ckpt = args.ckpt
     output_dir = args.out
     requantize = args.requantize
     key = args.key
@@ -24,7 +24,7 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gan = load_checkpoint(ckpt_folder, dac.DAC.load(dac.utils.download()).to(device), device, key=key, descending=descending) # type: ignore
+    gan = DACGANV2.load_from_checkpoint(ckpt, map_location=device) # type: ignore
 
     gen_model = gan.generator
     dac_model = gan.codec
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained neural transfer model.")
 
     parser.add_argument("--input", help="Path to input audio folder.", type=str, metavar="path", required=True)
-    parser.add_argument("--ckpt", help="Path to checkpoint folder.", type=str, metavar="path", required=True)
+    parser.add_argument("--ckpt", help="Path to checkpoint.", type=str, metavar="path", required=True)
     parser.add_argument("--key", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
     parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
     parser.add_argument("--out", help="Name of output folder.", type=str, metavar="name", required=True)

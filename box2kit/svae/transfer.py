@@ -12,30 +12,30 @@ def transfer(input_wave: torch.Tensor, gen_model: TransferGAN) -> torch.Tensor:
     return output_wave
 
 def main(args):
-    CKPT_DIR = args.ckpt
-    SORT_KEY = args.key
-    DESCENDING = not args.asc
-    INPUT_DIR = args.input
-    OUTPUT_DIR = args.output
+    ckpt = args.ckpt
+    sort_key = args.key
+    descending = not args.asc
+    input_dir = args.input
+    output_dir = args.output
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    uload.mkdir(OUTPUT_DIR)
+    uload.mkdir(output_dir)
 
-    ckpt = checkpoints.get_checkpoint_path(CKPT_DIR, SORT_KEY, DESCENDING)
+    # ckpt = checkpoints.get_checkpoint_path(ckpt, sort_key, descending)
 
     gen_model = TransferGAN.load_from_checkpoint(ckpt, map_location=device)
     gen_model.eval()
     # model_sr = gen_model.sample_rate
     model_sr = 44100
 
-    input_waveforms, file_names = uload.load_dir(INPUT_DIR, model_sr)
+    input_waveforms, file_names = uload.load_dir(input_dir, model_sr)
 
     with torch.inference_mode():
         for input_wave, file_name in zip(input_waveforms, file_names):
             input_wave = input_wave.to(device)
             output, _, _ = transfer(input_wave.reshape(1,1,-1), gen_model)
-            torchaudio.save(f"{OUTPUT_DIR}/{file_name}", output[0].detach().cpu(), model_sr)
+            torchaudio.save(f"{output_dir}/{file_name}", output[0].detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")

@@ -47,7 +47,7 @@ def main(args, configs):
     # command-line arguments
     data_path = args.data
     experiment_name = args.name
-    ckpt_load = args.ckpt
+    ckpt = args.ckpt
     test_file = args.test
 
     # full-length signals are divided into segments according to tempo
@@ -76,7 +76,7 @@ def main(args, configs):
     model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta)
 
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
+    # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
     # callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
     callbacks = []

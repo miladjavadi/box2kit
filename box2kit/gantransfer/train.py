@@ -80,7 +80,7 @@ def main(args, configs):
     # command-line arguments
     data_path = args.data
     experiment_name = args.name
-    ckpt_load = args.ckpt
+    ckpt = args.ckpt
     test_file = args.test
 
     train_target_dir = os.path.join(data_path, train_target_path)
@@ -121,7 +121,7 @@ def main(args, configs):
 
 
     # load from previously saved checkpoint, if provided
-    ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
+    # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
     logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks) # type: ignore
