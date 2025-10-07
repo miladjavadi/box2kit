@@ -1,6 +1,6 @@
 # box2kit: A Demonstration of Percussion Instrument Timbre Transfer Using DAC-Encoded Recordings
 
-box2kit is a collection of models designed to transform the timbre of target percussion instrument recordings to that of another instrument.
+box2kit is a collection of models designed to transform the timbre of percussion instrument recordings to that of another instrument.
 
 The idea for this project came from me wanting bespoke, natural-sounding acoustic drum tracks for my own songs, but not having access to a drum kit, nor the patience to meticulously program tracks using a VST.
 I spend a majority of my songwriting process in the voice memo app on my phone, where I usually beatbox placeholders for actual drum tracks.
@@ -20,7 +20,7 @@ These kinds of models are what are primarily explored in this project.
 
 This repo contains four types of models for performing explicitly paired target-output instrument timbre transfer.
 
-Three of these: *neural transform*, *match search*, and *affine transform*, are effectively vector transforms that are applied to latent space respresentations of audio signals, encoded using [Descript Audio Codec (DAC)](https://github.com/descriptinc/descript-audio-codec).
+Three of these: *neural transfer*, *match search*, and *affine transformation*, are effectively vector transforms that are applied to latent space respresentations of audio signals, encoded using [Descript Audio Codec (DAC)](https://github.com/descriptinc/descript-audio-codec).
 There are two main reasons for this.
 Firstly, by using DAC as an interface for our models, we effectively bypass the need for our models to learn feature representation, as this is already accomplished by DAC.
 This potentially allows us to create sparser models, that are faster to train and less prone to overfitting when data is sparse, as is often the case for paired data modeling.
@@ -31,8 +31,8 @@ In turn, this may allow us to "correct" for slight inaccuracies in the output of
 A fourth model type, the *waveform autoencoder*, is a full waveform-to-waveform Variational Autoencoder (VAE).
 It serves as a baseline against which to compare the DAC-interfacing models, and to demonstrate the concept of paired instrument timbre transfer on its own.
 
-### Neural Transform
-Neural transform models use Convolutional Neural Networks (CNNs) to transform target instrument latent vectors to symbolically equivalent output instrument latent vectors.
+### Neural Transfer
+Neural transfer models use Convolutional Neural Networks (CNNs) to transform target instrument latent vectors to symbolically equivalent output instrument latent vectors.
 They are trained using a combination of waveform reconstruction loss, latent space distance, and adversarial loss.
 
 ### Match Search
@@ -43,8 +43,8 @@ Each segment is then replaced with the respective output codebook entries.
 A $k$-order match search can be performed by matching each input segment with its $k$ nearest neighboring target codebook entries, and replacing it with the mean of their respective output codebook entries.
 The output is then re-mapped to the nearest neighboring ouptut codebook entry.
 
-### Affine Transform
-Affine transform models use Random Sample Consensus (RANSAC) to derive an affine transform\
+### Affine Transformation
+Affine transformation models use Random Sample Consensus (RANSAC) to derive an affine transform\
 $$\hat{q}[i]=Ap[i] + b,$$\
 which maps target latent vectors $p[i]$ to symbolically equivalent output vectors $\hat{q}[i]$.
 
@@ -133,7 +133,7 @@ Input files must be contained in a folder, pointed to by the second positional a
 ```--output``` specifies the name of the output file directory.
 
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
-For ```neural``` and ```affine``` models, ```--requantize``` can be used to requantize the generated DAC-latents using DAC's RVQ.
+For ```neural``` and ```affine``` models, ```--rq``` can be used to requantize the generated DAC-latents using DAC's RVQ.
 
 ## Demonstration
 Coming soon!
