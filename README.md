@@ -101,7 +101,7 @@ The preferred structure of the dataset directory can be configured in ```box2kit
 ### Model Training
 All models follow the same naming/syntax conventions.
 A model can be trained by calling the ```train``` submodule inside their respective subpackage:
-```bash
+```
 python -m box2kit.<model_type>.train path/to/data --name experiment_name --test path/to/test_file 
 ```
 ```--name``` sets the name of the checkpoint folder/model file for the model within the respective model type's logs folder.
