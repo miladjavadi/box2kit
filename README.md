@@ -14,12 +14,12 @@ I figured that a fun, intuitive way to approach this problem could be through a 
 Each of the four model types are implemented as submodules inside the ```box2kit``` module.
 
 ### Dataset Management
-By default, dataset directories are expected to contain one folder for training data, and an optional folder for validation data.
+Using default settings, dataset directories are expected to contain one folder for training data, and an optional folder for validation data.
 These folders should be named ```training``` and ```validation```, respectively.
 Each folder should contain two subfolders of **paired** target and output instrument recordings, by default named ```target``` and ```output```.
 The recordings should be named such that each target recording ```.../target/x.wav``` has a symbolically identical output recording ```.../output/x.wav```.
 
-By default, the dataset file tree should look similar to this:
+With default settings, the dataset file tree should look similar to this:
 ```
 └── data/
     ├── training/
