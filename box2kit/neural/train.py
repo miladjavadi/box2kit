@@ -94,7 +94,7 @@ def main(args, configs):
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
-        dummy_frame = codec.encode(train_loader.dataset[0][0].unsqueeze(0))[0]
+        dummy_frame = codec.encode(train_loader.dataset[0][0].unsqueeze(0).to(DEVICE))[0]
         block_length_in_frames = dummy_frame.shape[2]
         output_block = codec.decode(dummy_frame)
         output_block_length_in_samples = output_block.shape[2]
