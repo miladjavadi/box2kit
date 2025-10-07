@@ -133,7 +133,7 @@ Input files must be contained in a folder, pointed to by the second positional a
 ```--output``` specifies the name of the output file directory.
 
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
-For ```neural``` and ```affine``` models, ```--requantize``` can be used to requantize the generated DAC-latents using DAC's RVQ.
+For ```neural``` and ```affine``` models, ```--rq``` can be used to requantize the generated DAC-latents using DAC's RVQ.
 
 ## Demonstration
 Coming soon!
