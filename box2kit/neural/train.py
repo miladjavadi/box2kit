@@ -103,12 +103,12 @@ def main(args, configs):
     # gan = DACGAN(dac_model, device, block_length_in_samples, output_block_length_in_samples, block_length_in_frames, lambda_embedding=lambda_embedding) # initialize new model
     gan = DACGANV2(block_length_in_samples, output_block_length_in_samples, block_length_in_frames, [dummy_stft.shape[1], dummy_stft.shape[2]], NFFT, beta, phi, codec, warmup=warmup, lr=lr)
 
-    callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
+    callbacks = []
 
     if test_file is not None:
         callbacks.append(GenerationCallback(test_file, test_output_folder, test_freq))
     if val_loader is not None:
-        callbacks.extend([DelayedEarlyStopping(es_delay, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}")])
+        callbacks.extend([DelayedEarlyStopping(es_delay, monitor="val_loss", mode="min", patience=10, check_finite=True), ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True)])
 
 
     # load from previously saved checkpoint, if provided
