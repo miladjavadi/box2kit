@@ -45,8 +45,8 @@ The output is then re-mapped to the nearest neighboring ouptut codebook entry.
 
 ### Affine Transform
 Affine transform models use Random Sample Consensus (RANSAC) to derive an affine transform\
-$$q[i]=Ap[i] + b,$$\
-which maps target latent vectors $p[i]$ to symbolically equivalent output vectors $q[i]$.
+$$\hat{q}[i]=Ap[i] + b,$$\
+which maps target latent vectors $p[i]$ to symbolically equivalent output vectors $\hat{q}[i]$.
 
 ### Waveform Autoencoder
 The waveform autoencoder used in this project is mostly a recreation of the [Realtime Variational Autoencoder (RAVE)](https://github.com/acids-ircam/RAVE).
