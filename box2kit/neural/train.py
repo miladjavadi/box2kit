@@ -33,16 +33,7 @@ def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
 
 
 def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str) -> torch.utils.data.DataLoader:
-    query_files = sorted(os.listdir(query_dir))
-    target_files = sorted(os.listdir(target_dir))
-
-    # load in all waveforms
-    query_waveforms = [load_mono((f"{query_dir}/{file}"), model_sr).to(device) for file in query_files if file[-4:] == ".wav"]
-    target_waveforms = [load_mono((f"{target_dir}/{file}"), model_sr).to(device) for file in target_files if file[-4:] == ".wav"]
-
-    query_dataset = reshape_data(query_waveforms, block_length_in_samples)
-    target_dataset = reshape_data(target_waveforms, block_length_in_samples)
-    paired_dataset = PairedWaveformDataset(query_dataset, target_dataset)
+    paired_dataset = PairedWaveformDataset(query_dir, target_dir, block_length_in_samples, model_sr)
     dataloader = torch.utils.data.DataLoader(paired_dataset, batch_size=batch_size, shuffle=True)
 
     return dataloader
@@ -92,7 +83,7 @@ def main(args, configs):
     sample_rate = codec.sample_rate
     block_length_in_samples = int(sample_rate*60/(tempo*subdiv/4))
 
-    train_dataloader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE)
+    train_loader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE)
 
     if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
         val_loader = prepare_dataloader(val_target_dir, val_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE)
@@ -103,7 +94,7 @@ def main(args, configs):
     # the length of an audio block may be altered during decoding.
     # thus, a second block sample length must be passed to the discriminator
     with torch.inference_mode():
-        dummy_frame = codec.encode(train_dataloader.dataset[0][0].unsqueeze(0))[0]
+        dummy_frame = codec.encode(train_loader.dataset[0][0].unsqueeze(0))[0]
         block_length_in_frames = dummy_frame.shape[2]
         output_block = codec.decode(dummy_frame)
         output_block_length_in_samples = output_block.shape[2]
@@ -125,7 +116,7 @@ def main(args, configs):
 
     logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks) # type: ignore
-    trainer.fit(gan, train_dataloaders=train_dataloader, val_dataloaders=val_loader, ckpt_path=ckpt)
+    trainer.fit(gan, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
