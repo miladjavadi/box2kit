@@ -15,12 +15,10 @@ from box2kit.gantransfer.train import load_mono, load_checkpoint
 from box2kit.utils import load_data as uload
 
 def main(args):
-    input_dir = args.input
+    input_dir = args.ins
     ckpt = args.ckpt
     output_dir = args.out
-    requantize = args.requantize
-    key = args.key
-    descending = not args.asc
+    requantize = args.rq
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -61,11 +59,9 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained neural transfer model.")
 
-    parser.add_argument("--input", help="Path to input audio folder.", type=str, metavar="path", required=True)
-    parser.add_argument("--ckpt", help="Path to checkpoint.", type=str, metavar="path", required=True)
-    parser.add_argument("--key", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
-    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
+    parser.add_argument("ins", help="Path to input audio folder.", type=str, metavar="input_path", required=True)
+    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path", required=True)
     parser.add_argument("--out", help="Name of output folder.", type=str, metavar="name", required=True)
-    parser.add_argument("--requantize", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
+    parser.add_argument("--rq", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
     args=parser.parse_args()
     main(args)

@@ -22,7 +22,7 @@ def transfer(dir: str, file: str, order: int, codec: dac.DAC, gen_model: MatchSe
 
 def main(args):
     EXPERIMENT_NAME = args.name
-    INPUT_DIR = args.input
+    INPUT_DIR = args.ins
     OUTPUT_DIR = args.output
     ORDER = args.order
 
@@ -46,9 +46,9 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
 
-    parser.add_argument("--name", help="File name of codebook.", type=str, metavar="name", required=True)
-    parser.add_argument("--input", help="Location of input file directory.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="path", default=uload.mkdir("outs"))
+    parser.add_argument("name", help="File name of codebook.", type=str, metavar="coebook_name", required=True)
+    parser.add_argument("ins", help="Location of input file directory.", type=str, metavar="input_path", required=True)
+    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
     parser.add_argument("--order", help="Match search order.", type=int, metavar="order", default=1)
     args=parser.parse_args()
     main(args)

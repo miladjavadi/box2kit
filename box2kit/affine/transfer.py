@@ -16,7 +16,7 @@ def main(args):
     # BATCH_SIZE = args.batchsize
     MODEL_PATH = args.ckpt
 
-    INPUT_DIR = args.target
+    INPUT_DIR = args.ins
     OUTPUT_DIR = args.output
 
     requantize = args.rq
@@ -51,9 +51,9 @@ if __name__ == "__main__":
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <query_dir>/x.wav should have a corresponding <target_dir>/x.wav.")
 
-    parser.add_argument("--target", help="Location of input audio files.", type=str, metavar="path", required=True)
+    parser.add_argument("ckpt", help="Path to trained affine transformation.", type=str, metavar="ckpt_path", required=True)
+    parser.add_argument("ins", help="Location of input audio files.", type=str, metavar="input_path", required=True)
     parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
-    parser.add_argument("--ckpt", help="Path to trained affine transformation.", type=str, metavar="path", required=True)
     parser.add_argument("--rq", help="Requantize generated latent sequence", action="store_true")
     args = parser.parse_args()
     main(args)

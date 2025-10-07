@@ -13,8 +13,6 @@ def transfer(input_wave: torch.Tensor, gen_model: TransferGAN) -> torch.Tensor:
 
 def main(args):
     ckpt = args.ckpt
-    sort_key = args.key
-    descending = not args.asc
     input_dir = args.input
     output_dir = args.output
 
@@ -40,10 +38,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
 
-    parser.add_argument("--ckpt", help="Location of checkpoint directory.", type=str, metavar="name", required=True)
-    parser.add_argument("--key", help="Sorting key for checkpoint in folder.", type=str, metavar="key", default="step")
-    parser.add_argument("--asc", help="Sort checkpoints according to key in ascending order.", action="store_true")
-    parser.add_argument("--input", help="Location of input file directory.", type=str, metavar="path", required=True)
-    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="path", default=uload.mkdir("outs"))
+    parser.add_argument("input", help="Location of input file directory.", type=str, metavar="input_path", required=True)
+    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path", required=True)
+    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
     args=parser.parse_args()
     main(args)
