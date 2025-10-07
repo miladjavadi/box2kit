@@ -45,7 +45,7 @@ The output is then re-mapped to the nearest neighboring ouptut codebook entry.
 
 ### Affine Transform
 Affine transform models use Random Sample Consensus (RANSAC) to derive an affine transform\
-$$q[i]=Ap[i] + b$$
+$$q[i]=Ap[i] + b,$$\
 which maps target latent vectors $p[i]$ to symbolically equivalent output vectors $q[i]$.
 
 ### Waveform Autoencoder
@@ -53,7 +53,12 @@ The waveform autoencoder used in this project is mostly a recreation of the [Rea
 The main difference is that this implementation is adapted for cross-instrumental synthesis using paired training data, rather than identical reconstruction.
 
 ## Usage
-Each of the four model types are implemented as submodules inside the ```box2kit``` module.
+The four model types presented [above](#model-types) are implemented as sub-packages inside the ```box2kit``` package.
+Each sub-package contains the model declaration ```model.py```, a training script ```training.py```, and a post-training transfer script ```transfer.py```.
+To ensure the correct working directory, the scripts should be called as submodules from the project's root folder:
+```
+user@puter:<project_dir>$ python -m box2kit.<model_type>.<script> 
+```
 
 ### Dataset Management
 Using default settings, dataset directories are expected to contain one folder for training data, and an optional folder for validation data.
@@ -95,7 +100,7 @@ The preferred structure of the dataset directory can be configured in ```box2kit
 
 ### Model Training
 All models follow the same naming/syntax conventions.
-A model can be trained by calling the ```train``` script inside their respective submodule:
+A model can be trained by calling the ```train``` submodule inside their respective subpackage:
 ```bash
 python -m box2kit.<model_type>.train path/to/data --name experiment_name --test path/to/test_file 
 ```
@@ -120,7 +125,7 @@ user@puter:<project_dir>$ python -m box2kit.<model_type>.train path/to/data --na
 Logs from the resumed model will be saved as a new version under the specified experiment name.
 
 ### Timbre Transfer
-Similar to for training, all model type submodules contain a respective ```transfer``` script, which follows a common syntax:
+Similar to for training, all model type subpackages contain a respective ```transfer``` script, which follows a common syntax:
 ```
 python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --output output/files
 ```
