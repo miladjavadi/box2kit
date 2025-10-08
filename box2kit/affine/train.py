@@ -31,8 +31,9 @@ def main(args, configs):
     val_target_path = global_config["validation_target_path"]
     val_output_path = global_config["validation_output_path"]
 
-    models_path = global_config["models"]
-
+    models_dir = uload.mkdir(global_config["models"])
+    logs_dir = model_config["logs"]
+    
     # command-line arguments
     data_path = args.data
     experiment_name = args.name
@@ -42,7 +43,7 @@ def main(args, configs):
     val_target_dir = os.path.join(data_path, val_output_path)
     val_output_dir = os.path.join(data_path, val_output_path)
 
-    save_path = os.path.join(models_path, f"{experiment_name}.pt")
+    save_path = os.path.join(models_path, logs_dir, f"{experiment_name}.pt")
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     sample_rate = codec.sample_rate
