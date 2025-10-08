@@ -23,7 +23,7 @@ def transfer(dir: str, file: str, order: int, codec: dac.DAC, gen_model: MatchSe
 def main(args):
     experiment_name = args.name
     input_dir = args.ins
-    output_dir = args.output
+    output_dir = args.out
     order = args.order
 
     uload.mkdir(f"{output_dir}")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     parser.add_argument("name", help="File name of codebook.", type=str, metavar="coebook_name")
     parser.add_argument("ins", help="Location of input file directory.", type=str, metavar="input_path")
-    parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
+    parser.add_argument("--out", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
     parser.add_argument("--order", help="Match search order.", type=int, metavar="order", default=1)
     args=parser.parse_args()
     main(args)
