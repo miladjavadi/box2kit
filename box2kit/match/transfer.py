@@ -46,8 +46,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
 
-    parser.add_argument("name", help="File name of codebook.", type=str, metavar="coebook_name", required=True)
-    parser.add_argument("ins", help="Location of input file directory.", type=str, metavar="input_path", required=True)
+    parser.add_argument("name", help="File name of codebook.", type=str, metavar="coebook_name")
+    parser.add_argument("ins", help="Location of input file directory.", type=str, metavar="input_path")
     parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
     parser.add_argument("--order", help="Match search order.", type=int, metavar="order", default=1)
     args=parser.parse_args()
