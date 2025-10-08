@@ -26,13 +26,14 @@ def main(args, configs):
     VAL_TARGET_PATH = global_config["validation_target_path"]
     VAL_OUTPUT_PATH = global_config["validation_output_path"]
 
-    MODELS_PATH = global_config["models"]
+    MODELS_PATH = uload.mkdir(global_config["models"])
+    logs_dir = uload.mkdir(os.path.join(MODELS_PATH, model_config["logs"]))
 
     # command-line arguments
     DATA_PATH = args.data
     EXPERIMENT_NAME = args.name
 
-    codebook_path = os.path.join(MODELS_PATH, f"{EXPERIMENT_NAME}.pt")
+    codebook_path = os.path.join(MODELS_PATH, logs_dir, f"{EXPERIMENT_NAME}.pt")
 
     train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
     train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)
