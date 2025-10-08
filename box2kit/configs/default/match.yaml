@@ -5,4 +5,4 @@ batch_size: 16 # Number of data points per mini-batch
 codebook_length: 512 # Length of codebook
 
 ### Output
-logs: "codebooks" # Relative path to match search codebooks in model folder
+logs: "match" # Relative path to match search codebooks in model folder
