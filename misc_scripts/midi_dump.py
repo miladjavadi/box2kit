@@ -1,3 +1,9 @@
+"""
+generate conditionally random midi sequence.
+
+mostly written by chatgpt.
+"""
+
 import mido
 from mido import Message, MidiFile, MidiTrack, MetaMessage
 import random
@@ -8,7 +14,7 @@ bpm = 90
 ticks_per_beat = 480
 num_bars = 10000
 beats_per_bar = 4
-subdivisions = 2  # eighth notes → 2 per beat
+subdivisions = 2 
 
 mid = MidiFile(ticks_per_beat=ticks_per_beat)
 track = MidiTrack()
@@ -18,7 +24,7 @@ tempo = mido.bpm2tempo(bpm)
 track.append(MetaMessage('set_tempo', tempo=tempo))
 
 step = ticks_per_beat // subdivisions  # ticks per 8th note
-duration = step // 2  # note length = half an 8th note, for example
+duration = step // 2  # note length = half an 8th note
 total_steps = num_bars * beats_per_bar * subdivisions
 
 # We’ll keep track of delta times explicitly
@@ -52,5 +58,6 @@ for step_idx in range(total_steps):
     # others simultaneous, time=0
     for note in chosen_notes[1:]:
         track.append(Message('note_off', note=note, velocity=velocity, time=0))
+
 
 mid.save('no_gap_random_chords.mid')
