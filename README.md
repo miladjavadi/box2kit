@@ -130,7 +130,7 @@ Similar to for training, all model type subpackages contain a respective ```tran
 python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --out output/files
 ```
 Input files must be contained in a folder, pointed to by the second positional argument.
-```--output``` specifies the name of the output file directory.
+```--out``` specifies the name of the output file directory.
 
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
 For ```neural``` and ```affine``` models, ```--rq``` can be used to requantize the generated DAC-latents using DAC's RVQ.
