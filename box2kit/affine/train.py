@@ -32,7 +32,7 @@ def main(args, configs):
     val_output_path = global_config["validation_output_path"]
 
     models_dir = uload.mkdir(global_config["models"])
-    logs_dir = model_config["logs"]
+    logs_dir = uload.mkdir(os.path.join(models_dir, model_config["logs"]))
     
     # command-line arguments
     data_path = args.data
