@@ -14,6 +14,7 @@ import numpy as np
 import sklearn
 from sklearn.linear_model import LinearRegression
 from sklearn.base import clone
+from tqdm import tqdm
 
 class AffineTransfer():
     def __init__(self, input_dim: int = 1024):
@@ -45,7 +46,7 @@ class AffineTransfer():
             best_score = 0
 
         rng = np.random.default_rng()
-        for i in range(n_trials):
+        for i in tqdm(range(n_trials), desc="RANSAC Trials"):
             model = clone(bestimator) # new instance of lin regressor
             sample_indices = rng.choice(n_points, n_samples)
             target_samples = targets[sample_indices]; output_samples = outputs[sample_indices]
