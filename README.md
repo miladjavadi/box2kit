@@ -127,7 +127,7 @@ Logs from the resumed model will be saved as a new version under the specified e
 ### Timbre Transfer
 Similar to for training, all model type subpackages contain a respective ```transfer``` script, which follows a common syntax:
 ```
-python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --output output/files
+python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --out output/files
 ```
 Input files must be contained in a folder, pointed to by the second positional argument.
 ```--output``` specifies the name of the output file directory.
