@@ -60,7 +60,7 @@ def main(args, configs):
     phi = model_config["phi"]
 
     models_dir = mkdir(global_config["models"])
-    logs_dir = model_config["logs"]
+    logs_dir = mkdir(os.path.join(models_dir, model_config["logs"]))
     test_freq = model_config["test_freq"]
 
     train_target_path = global_config["training_target_path"]
@@ -114,7 +114,7 @@ def main(args, configs):
     # load from previously saved checkpoint, if provided
     # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
-    logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
+    logger = CSVLogger(save_dir=logs_dir, name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks) # type: ignore
     trainer.fit(gan, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 

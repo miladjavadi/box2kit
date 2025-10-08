@@ -6,3 +6,4 @@ Dockerfile
 .dockerignore
 lightning_logs/
 **/__pycache__/
+box2kit/configs/user/

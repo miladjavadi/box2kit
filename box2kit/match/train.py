@@ -7,6 +7,7 @@ import datetime
 import os
 
 import box2kit.utils.load_data as uload
+from box2kit.utils.load_data import mkdir
 
 # Constants
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,14 +27,14 @@ def main(args, configs):
     VAL_TARGET_PATH = global_config["validation_target_path"]
     VAL_OUTPUT_PATH = global_config["validation_output_path"]
 
-    MODELS_PATH = uload.mkdir(global_config["models"])
-    logs_dir = uload.mkdir(os.path.join(MODELS_PATH, model_config["logs"]))
+    models_dir = mkdir(global_config["models"])
+    logs_dir = mkdir(os.path.join(models_dir, model_config["logs"]))
 
     # command-line arguments
     DATA_PATH = args.data
     EXPERIMENT_NAME = args.name
 
-    codebook_path = os.path.join(MODELS_PATH, logs_dir, f"{EXPERIMENT_NAME}.pt")
+    codebook_path = os.path.join(logs_dir, f"{EXPERIMENT_NAME}.pt")
 
     train_target_dir = os.path.join(DATA_PATH, TRAIN_TARGET_PATH)
     train_output_dir = os.path.join(DATA_PATH, TRAIN_OUTPUT_PATH)

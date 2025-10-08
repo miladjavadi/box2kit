@@ -5,6 +5,7 @@ import pickle as pkl
 import numpy as np
 
 from box2kit.utils import load_data as uload
+from box2kit.utils.load_data import mkdir
 from box2kit.affine.model import AffineTransfer
 import datetime
 import os
@@ -22,17 +23,17 @@ def main(args, configs):
     batch_size = model_config["batch_size"]
     experiment_name = args.name
 
-    n_trials = args.trial
-    n_samples = args.samples
-    inlier_threshold = args.threshold
+    n_trials = model_config["trials"]
+    n_samples = model_config["samples"]
+    inlier_threshold = model_config["threshold"]
 
     train_target_path = global_config["training_target_path"]
     train_output_path = global_config["training_output_path"]
     val_target_path = global_config["validation_target_path"]
     val_output_path = global_config["validation_output_path"]
 
-    models_dir = uload.mkdir(global_config["models"])
-    logs_dir = uload.mkdir(os.path.join(models_dir, model_config["logs"]))
+    models_dir = mkdir(global_config["models"])
+    logs_dir = mkdir(os.path.join(models_dir, model_config["logs"]))
     
     # command-line arguments
     data_path = args.data
@@ -40,10 +41,10 @@ def main(args, configs):
 
     train_target_dir = os.path.join(data_path, train_target_path)
     train_output_dir = os.path.join(data_path, train_output_path)
-    val_target_dir = os.path.join(data_path, val_output_path)
+    val_target_dir = os.path.join(data_path, val_target_path)
     val_output_dir = os.path.join(data_path, val_output_path)
 
-    save_path = os.path.join(models_path, logs_dir, f"{experiment_name}.pt")
+    save_path = os.path.join(logs_dir, experiment_name)
 
     codec = dac.DAC.load(dac.utils.download()).to(DEVICE)
     sample_rate = codec.sample_rate

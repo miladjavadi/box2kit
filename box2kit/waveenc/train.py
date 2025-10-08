@@ -36,7 +36,7 @@ def main(args, configs):
     phi = model_config["phi"]
 
     models_dir = mkdir(global_config["models"])
-    logs_dir = model_config["logs"]
+    logs_dir = mkdir(os.path.join(models_dir, model_config["logs"]))
     test_freq = model_config["test_freq"]
 
     train_target_path = global_config["training_target_path"]
@@ -89,7 +89,7 @@ def main(args, configs):
     if val_loader is not None:
         callbacks.extend([ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True)])
     
-    logger = CSVLogger(save_dir=os.path.join(models_dir, logs_dir), name=experiment_name)
+    logger = CSVLogger(save_dir=logs_dir, name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
