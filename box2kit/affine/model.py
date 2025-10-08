@@ -29,6 +29,7 @@ class AffineTransfer():
         self.is_fitted = False
     
     def fit(self, targets, outputs, n_trials = 100, threshold = 10, n_samples = 256, trim_silence = True, gate_threshold = 140):
+        # remove silent frames by masking frames that are far enough away from the "silence region" in latent space
         if trim_silence:
             mask = np.linalg.norm(targets - np.asarray(DAC_SILENCE).reshape(1, -1), axis=1) > gate_threshold
             targets = targets[mask]
@@ -41,7 +42,7 @@ class AffineTransfer():
             approximations = bestimator.predict(targets)
             residuals = approximations - outputs
             distances = np.linalg.norm(residuals, axis=0)
-            best_score = np.count_nonzero(np.less(distances, threshold))/n_points # ratio of inliers
+            best_score = np.count_nonzero(np.less(distances, threshold))/n_points # ratio of inliers to total points
         else:
             best_score = 0
 
