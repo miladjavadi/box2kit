@@ -14,7 +14,7 @@ def main(args):
     model_path = args.ckpt
 
     input_dir = args.ins
-    output_dir = args.output
+    output_dir = args.out
 
     requantize = args.rq
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     parser.add_argument("ckpt", help="Path to trained affine transformation.", type=str, metavar="ckpt_path")
     parser.add_argument("ins", help="Location of input audio files.", type=str, metavar="input_path")
-    parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
+    parser.add_argument("--out", help="Output directory.", type=str, metavar="path", required=True)
     parser.add_argument("--rq", help="Requantize generated latent sequence", action="store_true")
     args = parser.parse_args()
     main(args)
