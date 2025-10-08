@@ -58,8 +58,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-trained neural transfer model.")
 
-    parser.add_argument("ins", help="Path to input audio folder.", type=str, metavar="input_path", required=True)
-    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path", required=True)
+    parser.add_argument("ins", help="Path to input audio folder.", type=str, metavar="input_path")
+    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path")
     parser.add_argument("--out", help="Name of output folder.", type=str, metavar="name", required=True)
     parser.add_argument("--rq", help="Requantize embeddings after applying transformation using DAC's RVQ.", action="store_true")
     args=parser.parse_args()
