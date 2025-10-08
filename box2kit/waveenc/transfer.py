@@ -38,8 +38,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
 
-    parser.add_argument("input", help="Location of input file directory.", type=str, metavar="input_path", required=True)
-    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path", required=True)
+    parser.add_argument("input", help="Location of input file directory.", type=str, metavar="input_path")
+    parser.add_argument("ckpt", help="Path to checkpoint.", type=str, metavar="ckpt_path")
     parser.add_argument("--output", help="Location of output file directory.", type=str, metavar="output_path", default=uload.mkdir("outs"))
     args=parser.parse_args()
     main(args)
