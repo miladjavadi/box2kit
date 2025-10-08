@@ -17,12 +17,12 @@ def main(args, configs):
     model_config = configs["affine"]
 
     # Configurables
-    tempo = args.tempo
-    subdiv = args.subdiv
-    batch_size = args.batchsize
+    tempo = model_config["tempo"]
+    subdiv = model_config["subdiv"]
+    batch_size = model_config["batch_size"]
     experiment_name = args.name
 
-    n_trials = args.trials
+    n_trials = args.trial
     n_samples = args.samples
     inlier_threshold = args.threshold
 
