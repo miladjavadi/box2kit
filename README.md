@@ -12,7 +12,7 @@ What results are recordings that contain the same compositional and expressive i
 
 However, as shown in the [report attached to this project]() (not yet published), this approach may not work particularly well in all cases.
 One such case is between percussion instruments with multiple distinct timbral "modes", for instance between beatboxing and acoustic drum kits.
-A more appropriate solution in those cases could be to use models that are explicitly trained to transfer timbre between a target-output instrument pair.
+A more effective solution in those cases could be to use models that are explicitly trained to transfer timbre between a target-output instrument pair.
 Such models utilize *paired* target and output instrument recordings to derive timbral relationships between symbolically identical audio data.
 These kinds of models are what are primarily explored in this project.
 
