@@ -46,8 +46,8 @@ def main(args):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transfer input recordings using pre-calculated affine transformation.")
 
-    parser.add_argument("ckpt", help="Path to trained affine transformation.", type=str, metavar="ckpt_path", required=True)
-    parser.add_argument("ins", help="Location of input audio files.", type=str, metavar="input_path", required=True)
+    parser.add_argument("ckpt", help="Path to trained affine transformation.", type=str, metavar="ckpt_path")
+    parser.add_argument("ins", help="Location of input audio files.", type=str, metavar="input_path")
     parser.add_argument("--output", help="Output directory.", type=str, metavar="path", required=True)
     parser.add_argument("--rq", help="Requantize generated latent sequence", action="store_true")
     args = parser.parse_args()
