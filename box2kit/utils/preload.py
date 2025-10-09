@@ -4,7 +4,7 @@ import dac
 
 class PairedLatentSequenceDataset(PairedWaveformDataset):
     """
-    Extend waveform dataset to contain pre-loaded latent sequences for each data point,
+    Extend waveform dataset to contain pre-computed latent sequences for each data point,
     increasing training performance.
     """
     def __init__(self, target_dir, output_dir, segment_length, sr=44100, codec=dac.DAC.load(dac.utils.download()), batch_size=1):
