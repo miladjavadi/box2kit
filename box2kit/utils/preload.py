@@ -1,7 +1,6 @@
 from box2kit.utils.load_data import PairedWaveformDataset, safe_encode
 import dac
 
-
 class PairedLatentSequenceDataset(PairedWaveformDataset):
     """
     Extend waveform dataset to contain pre-computed latent sequences for each data point,
