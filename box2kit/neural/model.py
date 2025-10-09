@@ -255,14 +255,9 @@ class DACGANV2(pl.LightningModule):
         return self.generator(x)
     
     def training_step(self, batch, batch_idx):
-        input_waveforms = batch
-        x, y = input_waveforms
+        _, _, target_latents, output_latents = batch
 
         gen_optimizer, discr_optimizer = self.optimizers()
-
-        with torch.no_grad():
-            target_latents = self.codec.encode(x)[0]
-            output_latents = self.codec.encode(y)[0]
 
         # train generator
         self.toggle_optimizer(gen_optimizer)
@@ -327,18 +322,13 @@ class DACGANV2(pl.LightningModule):
         self.log("adversarial_loss", adversarial_loss, prog_bar=True, logger=True)
     
     def validation_step(self, batch):
-        input_waveforms = batch
-        target, output = input_waveforms
-
-        with torch.no_grad():
-            Z_target = self.codec.encode(target)[0]
-            Z_output = self.codec.encode(output)[0]
+        _, _, target_latents, output_latents = batch
         
-        Z_gen = self.generator(Z_target)
+        Z_gen = self.generator(target_latents)
 
         with torch.no_grad():
             gen = self.codec.decode(Z_gen)
-            output_post = self.codec.decode(Z_output)
+            output_post = self.codec.decode(output_latents)
 
         gen_AS = AudioSignal(gen, self.sr)
         output_AS = AudioSignal(output_post, self.sr)
