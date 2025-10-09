@@ -5,19 +5,19 @@ import os
 import yaml
 
 class PairedWaveformDataset(torch.utils.data.Dataset):
-    def __init__(self, query_dir, target_dir, segment_length, sr=44100):
-        self.query_data = reshape_data(load_dir(query_dir, sr)[0], segment_length)
+    def __init__(self, target_dir, output_dir, segment_length, sr=44100):
         self.target_data = reshape_data(load_dir(target_dir, sr)[0], segment_length)
+        self.output_data = reshape_data(load_dir(output_dir, sr)[0], segment_length)
 
-        if self.query_data.shape != self.target_data.shape:
-            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.query_data.shape}, while target dataset has shape {self.target_data.shape})")
+        if self.target_data.shape != self.output_data.shape:
+            raise Exception(f"Query dataset and target dataset must have the same size (query dataset has shape {self.target_data.shape}, while target dataset has shape {self.output_data.shape})")
     
     def __len__(self):
-        return self.query_data.shape[0]
+        return self.target_data.shape[0]
     
     def __getitem__(self, idx: int):
-        x = self.query_data[idx]
-        y = self.target_data[idx]
+        x = self.target_data[idx]
+        y = self.output_data[idx]
         return x, y
 
 
