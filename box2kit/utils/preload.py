@@ -6,11 +6,11 @@ class PairedLatentSequenceDataset(PairedWaveformDataset):
     Extend waveform dataset to contain pre-computed latent sequences for each data point,
     increasing training performance.
     """
-    def __init__(self, target_dir, output_dir, segment_length, sr=44100, codec=dac.DAC.load(dac.utils.download()), batch_size=1):
+    def __init__(self, target_dir, output_dir, segment_length, sr=44100, codec: dac.DAC = dac.DAC.load(dac.utils.download()), batch_size=1):
         super().__init__(target_dir, output_dir, segment_length, sr)
 
-        self.target_latents = safe_encode(self.target_data, codec, batch_size)
-        self.output_latents = safe_encode(self.output_data, codec, batch_size)
+        self.target_latents = safe_encode(self.target_data.to(codec.device), codec, batch_size)
+        self.output_latents = safe_encode(self.output_data.to(codec.device), codec, batch_size)
     
     def __len__(self):
         return self.target_data.shape[0]
