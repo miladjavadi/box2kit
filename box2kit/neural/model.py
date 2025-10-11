@@ -255,7 +255,7 @@ class DACGANV2(pl.LightningModule):
         return self.generator(x)
     
     def training_step(self, batch, batch_idx):
-        _, _, target_latents, output_latents = batch
+        _, output_audio, target_latents, output_latents = batch
 
         gen_optimizer, discr_optimizer = self.optimizers()
 
@@ -265,16 +265,16 @@ class DACGANV2(pl.LightningModule):
         gen_latents = self.generator(target_latents)
 
         with torch.no_grad():
-            gen_output = self.codec.decode(gen_latents)
-            output_post = self.codec.decode(output_latents) # use post-dac target to match dims
-            stft_gen = torch.stft(gen_output.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=gen_output.device), return_complex=True).abs()
-            stft_output = torch.stft(output_post.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=output_post.device), return_complex=True).abs()
+            gen_audio = self.codec.decode(gen_latents)
+            output_trim = output_audio[:,:,:gen_audio.shape[-1]] # trim to match dims
+            stft_gen = torch.stft(gen_audio.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=gen_audio.device), return_complex=True).abs()
+            stft_output = torch.stft(output_trim.squeeze(1), self.discriminator.nfft, window=torch.hann_window(self.discriminator.nfft, device=output_trim.device), return_complex=True).abs()
         
         # calculate generator losses
         gen_optimizer.zero_grad()
 
-        gen_AS = AudioSignal(gen_output, self.sr)
-        output_AS = AudioSignal(output_post, self.sr)
+        gen_AS = AudioSignal(gen_audio, self.sr)
+        output_AS = AudioSignal(output_trim, self.sr)
 
         # spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
         spectral_loss = self.mel_loss_fn(gen_AS, output_AS)
@@ -322,16 +322,16 @@ class DACGANV2(pl.LightningModule):
         self.log("adversarial_loss", adversarial_loss, prog_bar=True, logger=True)
     
     def validation_step(self, batch):
-        _, _, target_latents, output_latents = batch
+        _, output_audio, target_latents, output_latents = batch
         
-        Z_gen = self.generator(target_latents)
+        gen_latents = self.generator(target_latents)
 
         with torch.no_grad():
-            gen = self.codec.decode(Z_gen)
-            output_post = self.codec.decode(output_latents)
+            gen_audio = self.codec.decode(gen_latents)
+            output_trim = output_audio[:,:,:gen_audio.shape[-1]]
 
-        gen_AS = AudioSignal(gen, self.sr)
-        output_AS = AudioSignal(output_post, self.sr)
+        gen_AS = AudioSignal(gen_audio, self.sr)
+        output_AS = AudioSignal(output_trim, self.sr)
 
         val_loss = self.mel_loss_fn(gen_AS, output_AS)
 
