@@ -79,7 +79,7 @@ def main(args, configs):
     # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
 
     # callbacks = [ModelCheckpoint(save_last=True, filename="latest-{epoch:02d}")]
-    callbacks = [ModelCheckpoint(filename="periodic_{epoch:02d}", every_n_epochs=1000, save_top_k=-1, dirpath="checkpoints/periodic")] # save checkpoints every 1000 epochs
+    callbacks = [ModelCheckpoint(filename="periodic/periodic_{epoch:02d}", every_n_epochs=1000, save_top_k=-1)] # save checkpoints every 1000 epochs
 
     # generate occasional test outputs from provided test file
     if test_file is not None:
@@ -87,7 +87,7 @@ def main(args, configs):
 
     # use early stopping and model checkpoints if validation data is provided
     if val_loader is not None:
-        callbacks.extend([ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best-{epoch:02d}-{val_loss:.2f}", save_last=True, dirpath="checkpoints/best")]) # save best performing model
+        callbacks.extend([ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min", filename="best/best-{epoch:02d}-{val_loss:.2f}", save_last=True)]) # save best performing model
     
     logger = CSVLogger(save_dir=logs_dir, name=experiment_name)
     trainer = pl.Trainer(accelerator="auto", devices=1, max_epochs=max_epochs, logger=logger, callbacks=callbacks, min_epochs=early_stopping_delay) # type: ignore
