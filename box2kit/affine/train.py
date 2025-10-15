@@ -72,12 +72,13 @@ def main(args, configs):
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-    configs = uload.load_configs("box2kit/configs")
     
     parser=argparse.ArgumentParser(description="Generate paired instrument affine transform.")
     parser.add_argument("data", help="Location of training and validaiton data (For this model, training and validation data are combined and used for training).", type=str, metavar="path")
     parser.add_argument("--name", help="Name of codebook.", type=str, metavar="name", default=timestamp)
+    parser.add_argument("--override", help="Temporarily override config using values from a separate override file.", type=str, metavar="override_file_path", default=None)
     
     args=parser.parse_args()
+
+    configs = uload.load_configs("box2kit/configs", args.override)
     main(args, configs)

@@ -95,13 +95,14 @@ def main(args, configs):
 
         
 if __name__ == "__main__":
-    configs = load_configs("box2kit/configs")
-    
     parser=argparse.ArgumentParser(description="Train paired instrument VAE model.")
     parser.add_argument("data", help="Location of training and validaiton data.", type=str, metavar="path")
     parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
     parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--name", help="Name of experiment", type=str, metavar="name", default="default_logs")
+    parser.add_argument("--override", help="Temporarily override config using values from a separate override file.", type=str, metavar="override_file_path", default=None)
     
     args=parser.parse_args()
+
+    configs = load_configs("box2kit/configs", args.override)
     main(args, configs)

@@ -99,7 +99,7 @@ def mkdir(dir_path: str):
     return dir_path
 
 
-def load_configs(config_dir: str) -> dict:
+def load_configs(config_dir: str, override_file: str = None) -> dict:
     default_folder = "default"
 
     with open(os.path.join(config_dir, default_folder, "global.yaml"), "r") as f:
@@ -109,5 +109,16 @@ def load_configs(config_dir: str) -> dict:
 
     file_list = [file for file in os.listdir(config_folder) if file.endswith(".yaml") and not file.startswith(".")]
     configs = {file_name[:-5]: yaml.safe_load(open(os.path.join(config_folder, file_name), "r")) for file_name in file_list}
+
+    if override_file is not None:
+        with open(override_file, "r") as f:
+            overrides = yaml.safe_load(f)
+            for attribute in overrides:
+                keys = attribute.split("/")
+                old_val = configs[keys[0]][keys[1]]
+                new_val = overrides[attribute]
+
+                print(f"Overriding {attribute}: {old_val} -> {new_val}")
+                configs[keys[0]][keys[1]] = new_val
 
     return configs
