@@ -119,8 +119,7 @@ def main(args, configs):
     trainer.fit(gan, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=ckpt)
 
 
-if __name__ == "__main__":
-    configs = load_configs("box2kit/configs")
+if __name__ == "__main__":  
     parser=argparse.ArgumentParser(description="Train neural timbre transfer model using paired query/target datasets.\n"
     "File pairs must have the same names within their respective directories.\n"
     "For instance: <target>/x.wav should have a corresponding <out>/x.wav.")
@@ -130,6 +129,9 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", help="Resume training from checkpoint in a log folder.", type=str, metavar="logs_path", default=None)
     parser.add_argument("--test", help="While training, periodically test model on audio file.", type=str, metavar="audio_file_path", default=None)
     parser.add_argument("--name", help="Name of experiment", type=str, metavar="name", default="default_logs")
-    
+    parser.add_argument("--override", help="Temporarily override config using values from a separate override file.", type=str, metavar="override_file_path", default=None)
+
     args=parser.parse_args()
+    
+    configs = load_configs("box2kit/configs", args.override)
     main(args, configs)
