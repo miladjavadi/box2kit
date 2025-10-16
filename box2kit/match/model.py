@@ -36,7 +36,13 @@ class PairedCodebook():
         Fitting is done using a greedy algorithm, which minimizes expected target-domain Frobenius distance between codewords and validation points.
 
         Args:
-
+            training_data (tensor[data pt., domain, latent dim., frame idx.]): Dataset of training sequence pairs.
+            validation_data (tensor[data pt., domain, latent dim., frame idx.]): Dataset of validation sequence pairs. 
+            codebook_length (int): Length of codebook/number of codewords.
+            batch_size (int): Size of mini-batches for point-pair distance array calculations. Larger batches decrease computation time, but increase memory usage.
+        
+        Returns:
+            codebook (tensor[codeword, domain, latent dim., frame idx.]): Constructed codebook.
         """
         codeword_indices = []
 
