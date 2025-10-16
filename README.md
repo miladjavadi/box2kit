@@ -111,11 +111,27 @@ The available model types are ```neural```, ```match```, ```affine```, and ```wa
 ### Model Configuration
 Several hyperparameters for model structure and training are configurable from the various configuration files found in ```box2kit/configs/```.
 
-A default set of config files ```box2kit/configs/default``` is provided. However, modifications to these files may be overwritten upon re-pulling the repo. If you wish to make modifications to the model configurations, it is therefore recommended to first copy the ```default``` folder as follows:
+A default set of config files ```box2kit/configs/default``` is provided. However, modifications to these files may be overwritten upon re-pulling the repo.
+If you wish to make modifications to the model configurations, it is therefore recommended to first copy the ```default``` folder as follows:
 ```
 user@puter:<project_dir>/box2kit/configs$ cp -r default user 
 ```
 and make any modifications to the ```user```-contained configuration files.
+
+Configuration parameters can be temporarily overriden on execution of any ```train``` script, using ```--override```, together with a YAML-file containing keys and temporary replacement values.
+For instance, ```override.yaml```, containing
+```
+neural/epochs: 500
+global/training_target_path: "validation/output"
+```
+can be used to override to override the ```epochs``` parameter in ```neural.yaml```, and the ```training_target_path``` parameter in ```global.yaml```:
+```
+user@puter:<project_dir>$ python -m box2kit.neural.train path/to/data --override override.yaml
+...
+Overriding neural/epochs: 10000 -> 500
+Overriding global/training_target_path: training/target -> validation/output
+```
+This can be useful for scheduling consecutive training of multiple models.
 
 ### Training from Checkpoint
 Training can be resumed from an existing ```neural``` or ```waveenc``` checkpoint by passing it to the ```train``` script using the ```--ckpt``` flag:
