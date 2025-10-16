@@ -60,4 +60,4 @@ for step_idx in range(total_steps):
         track.append(Message('note_off', note=note, velocity=velocity, time=0))
 
 
-mid.save('no_gap_random_chords.mid')
+mid.save('outs/no_gap_random_chords.mid')
