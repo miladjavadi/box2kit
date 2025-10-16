@@ -76,57 +76,18 @@ class Generator(nn.Module):
     
 ### DISCRIMINATOR
 
-class Discriminator(nn.Module):
-    # generate discriminator score between 0 and 1.
-    def __init__(self, block_length_in_samples, block_length_in_frames):
-        super(Discriminator, self).__init__()
-
-        self.block_length_in_samples = block_length_in_samples
-        self.block_length_in_frames = block_length_in_frames
-
-        self.embedding_path = nn.Sequential(
-            nn.Conv1d(1024, 2, kernel_size=4, stride=4, padding=1),
-            nn.LeakyReLU(),
-            nn.Conv1d(2, 1, kernel_size=4, stride=4, padding=1),
-            nn.BatchNorm1d(1),
-            nn.LeakyReLU(),
-        )
-
-        self.waveform_path = nn.Sequential(
-            nn.Conv1d(1, 2, kernel_size=4, stride=4, padding=1),
-            nn.LeakyReLU(),
-            nn.Conv1d(2, 2, kernel_size=4, stride=4, padding=1),
-            nn.BatchNorm1d(2),
-            nn.LeakyReLU(),
-            nn.Conv1d(2, 1, kernel_size=4, stride=4, padding=1),
-            nn.BatchNorm1d(1),
-            nn.LeakyReLU()
-        )
-
-        self.combined_layer = nn.Sequential(
-            nn.Linear((1*(block_length_in_frames//16) + 1*(block_length_in_samples//64)), 2),
-            nn.LeakyReLU(),
-            nn.Linear(2, 1),
-            nn.Sigmoid()
-        )
-    
-    def forward(self, embedding, waveform):
-        embedding = embedding.to(torch.float32)
-        waveform = waveform.to(torch.float32)
-
-        embedding_features = self.embedding_path(embedding)
-        waveform_features = self.waveform_path(waveform)
-
-        combined_features = torch.cat([embedding_features.flatten(1, -1), waveform_features.flatten(1, -1)], dim=1)
-        output_probability = self.combined_layer(combined_features)
-
-
-        return output_probability
-
 class DiscriminatorV2(nn.Module):
     """
+    STFT CNN discriminator.
+
     Adapted from DCGAN's SpecGAN:
-    https://github.com/chrisdonahue/wavegan/blob/master/specgan.py
+    https://github.com/chrisdonahue/wavegan/blob/master/specgan.py.
+
+    Args:
+        input_dims (list of int): Dimensions of STFT inputs ([n fft bins, n frames]).
+        nkernels (list of int): Number of output kernels for each convolutional layer.
+        kernel_sizes (list of int): Kernel lengths for each convolutional layer.
+        strides (list of int): Stride length at each convolutional layer.
     """
     def __init__(self,
                  input_dims: list[int],
@@ -135,7 +96,7 @@ class DiscriminatorV2(nn.Module):
                  kernel_sizes: list[int] = [5, 5, 5, 5],
                  strides: list[int] = [2, 2, 2, 2]):
         super().__init__()
-        self.input_dims = input_dims # STFT dims ([nfft, nframes])
+        self.input_dims = input_dims
         self.nkernels = nkernels
         self.strides = strides
         
@@ -234,10 +195,10 @@ class DACGANV2(pl.LightningModule):
         self.nframes = nframes
 
         self.adversarial_phase = False
-        # the objective of the discriminator is to return 1 for real target recordings, and 0 for synthesized ones
 
         self.automatic_optimization = False
 
+        # the objective of the discriminator is to return 1 for real target recordings, and 0 for synthesized ones
         self.real_label = 1
         self.fake_label = 0
 
