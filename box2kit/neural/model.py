@@ -17,6 +17,9 @@ import torchaudio
 ### GENERATOR
 
 class Generator(nn.Module):
+    """
+    Perform timbre transfer using a CNN on a target latent sequence.
+    """
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
@@ -40,38 +43,7 @@ class Generator(nn.Module):
             nn.Conv1d(256, 1024, kernel_size=3, padding="same")
         )
 
-        # encoder
-        self.outer2hid = nn.Sequential(
-            nn.Conv1d(1024, 256, kernel_size=3, padding="same"),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU()
-        )
-        self.hid2mu_inner = nn.Conv1d(256, 64, kernel_size=5, padding="same")
-        self.hid2sigma_inner = nn.Conv1d(256, 64, kernel_size=5, padding="same")
-
-        # decoder
-        self.inner2outer = nn.Sequential(
-            nn.Conv1d(64, 256, kernel_size=5, padding="same"),
-            nn.LeakyReLU()
-        )
-    
-    def encode(self, outer):
-        h = self.outer2hid(outer)
-        mu, sigma = self.hid2mu_inner(h), self.hid2sigma_inner(h)
-        return mu, sigma
-    
-    def decode(self, inner):
-        return self.inner2outer(inner)
-
     def forward(self, z):
-        # mu, sigma = self.encode(input)
-        # epsilon = torch.randn_like(sigma)
-
-        # inner_reparam = mu + sigma*epsilon
-        # outer_hat = self.decode(inner_reparam)
-
-        # return outer_hat
-
         return self.main(z)
     
 ### DISCRIMINATOR
