@@ -8,7 +8,7 @@ class PairedCodebook():
     """
     Codebook of paired target-output latent sequence pairs.
 
-    .. Note::
+    .. note::
             Both target- and output-domain coordinates should be provided for each point.
             Dim 1 in both the training_data and validation_data array corresponds to domain, with target-domain coordinates in [:, 0, ...], and output-domain coordinates in [:, 1, ...].
     
@@ -33,7 +33,7 @@ class PairedCodebook():
         """
         Construct a best-fit codebook for quantizing a set of validation points from a subset of training points.
 
-        Fitting is done using a greedy algorithm, which minimizes expected target-domain Frobenius distance between codewords and validation points.
+        Codebooks are fitted using a greedy algorithm, which minimizes expected target-domain Frobenius distance between codewords and validation points.
 
         Args:
             training_data (tensor[data pt., domain, latent dim., frame idx.]): Dataset of training sequence pairs.
@@ -159,16 +159,48 @@ class PairedCodebook():
 
 
 class MatchSearchTransfer():
+    """
+    Perform match-search based timbre transfer using a pre-constructed codebook of latent sequence pairs.
+
+    Args:
+        codebook (PairedCodebook): Codebook used in match search.
+    """
     def __init__(self, codebook: PairedCodebook):
         self.codebook = codebook
     
-    def transfer_sequence(self, target_sequence, n=1):
-        with torch.no_grad():
-            output_sequence = torch.stack([self.transfer(target) for target in target_sequence], dim=0)
+    def transfer_array(self, target_array, n=1):
+        """
+        Perform `n`th-order match-search based timbre transfer on an array of target latent sequences.
 
-        return output_sequence
+        Target latent sequences are matched with their `n` nearest neighboring codewords.
+        Output latent sequences are generated as the mean of the matching codewords' output-domain counterparts, re-quantized to the nearest output-domain codeword.
+
+        Args:
+            target_array (Tensor[array idx., latent dim., frame idx.]): Array of target latent sequences.
+            n (int): Match search order.
+        
+        Returns:
+            output_array (Tensor[array idx., latent dim., frame idx.]): Generated array of output latent sequences.
+        """
+        with torch.no_grad():
+            output_array = torch.stack([self.transfer(target) for target in target_array], dim=0)
+
+        return output_array
     
     def transfer(self, target, n=1):
+        """
+        Perform `n`th-order match-search based timbre transfer on a target latent sequence.
+
+        Target latent sequences are matched with their `n` nearest neighboring codewords.
+        Output latent sequences are generated as the mean of the matching codewords' output-domain counterparts, re-quantized to the nearest output-domain codeword.
+
+        Args:
+            target (Tensor[latent dim., frame idx.]): Target latent sequence.
+            n (int): Match search order.
+        
+        Returns:
+            output (Tensor[latent dim., frame idx.]): Generated output latent sequence.
+        """
         _, opt_indices = match_search(target.unsqueeze(0), self.codebook.targets, n)
 
         matched_outputs = self.codebook.outputs[opt_indices,:,:]
@@ -180,7 +212,20 @@ class MatchSearchTransfer():
         return output
 
 
-def match_search(input, codebook, n=1):
+def match_search(input, codebook):
+    """
+    Match an input latent sequence with its nearest neighboring entry in a codebook.
+
+    Inputs are matched with the codebook entries nearest to them in Frobenius distance.
+
+    Args:
+        input (Tensor[latent dim., frame idx.]): Input latent sequence.
+        codebook (Tensor[codeword, latent dim., frame idx.]): Codebook to match against.
+
+    Returns:
+        min_dist (float): Frobenius distance between input and nearest neighboring codeword.
+        opt_index (int): Index in codebook of nearest neighboring codeword.
+    """
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
 

@@ -14,7 +14,7 @@ def transfer(dir: str, file: str, order: int, codec: dac.DAC, gen_model: MatchSe
     input_wave_segments = uload.reshape_data([uload.load_mono(f"{dir}/{file}", sr).to(codec.device)], waveform_segment_length)
 
     input_latents = uload.safe_encode(input_wave_segments, codec)
-    output_latents = gen_model.transfer_sequence(input_latents, order)
+    output_latents = gen_model.transfer_array(input_latents, order)
     output_wave_segments = uload.safe_decode(output_latents, codec)
 
     output_wave = output_wave_segments.reshape(1, -1)
