@@ -52,7 +52,7 @@ def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
     Each audio file is averaged to mono, resampled and clipped at 0dB.
 
     .. seealso::
-        `load_mono` loads a single audio file as a tensor.
+        `box2kit.utils.load_mono` loads a single audio file as a tensor.
 
     Args:
         dir (str): Path to folder of `.wav` files to load.
