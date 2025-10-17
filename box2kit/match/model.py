@@ -204,8 +204,9 @@ class MatchSearchTransfer():
         _, opt_indices = match_search(target.unsqueeze(0), self.codebook.targets, n)
 
         matched_outputs = self.codebook.outputs[opt_indices,:,:]
+        mean_output = torch.mean(matched_outputs, dim=0)
 
-        _, opt_index = match_search(matched_outputs.unsqueeze(0), self.codebook.outputs, 1)
+        _, opt_index = match_search(mean_output.unsqueeze(0), self.codebook.outputs, 1)
 
         output = self.codebook.outputs[opt_index]
 
@@ -223,8 +224,8 @@ def match_search(input, codebook, n):
         codebook (Tensor[codeword, latent dim., frame idx.]): Codebook to match against.
 
     Returns:
-        min_dist (float or ): Frobenius distance between input and `n` nearest neighboring codewords.
-        opt_index (int): Index in codebook of `n` nearest neighboring codeword.
+        min_dist (Tensor): Frobenius distance between input and `n` nearest neighboring codewords.
+        opt_index (Tensor): Index in codebook of `n` nearest neighboring codeword.
     """
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
