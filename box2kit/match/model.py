@@ -183,7 +183,7 @@ class MatchSearchTransfer():
             output_array (Tensor[array idx., latent dim., frame idx.]): Generated array of output latent sequences.
         """
         with torch.no_grad():
-            output_array = torch.stack([self.transfer(target, n) for target in target_array], dim=0)
+            output_array = torch.cat([self.transfer(target, n) for target in target_array], dim=0)
 
         return output_array
     
