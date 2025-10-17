@@ -15,6 +15,7 @@ def transfer(in_wave: torch.Tensor, order: int, codec: dac.DAC, gen_model: Match
 
     input_latents = uload.safe_encode(input_wave_segments, codec)
     output_latents = torch.cat([gen_model.transfer_array(latent_batch, order) for latent_batch in uload.batch_partition(input_latents, batch_size)], dim=0)
+    print(output_latents.shape)
     output_wave_segments = uload.safe_decode(output_latents, codec)
 
     output_wave = output_wave_segments.reshape(1, -1)
