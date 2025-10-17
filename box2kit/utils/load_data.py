@@ -123,3 +123,11 @@ def load_configs(config_dir: str, override_file: str = None) -> dict:
                 configs[keys[0]][keys[1]] = new_val
 
     return configs
+
+def match_trim(x: torch.Tensor, y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    if x.shape[-1] > y.shape[-1]:
+        x = x[:y.shape[-1]]
+    elif x.shape[-1] < y.shape[-1]:
+        y = y[:x.shape[-1]]
+    
+    return x, y
