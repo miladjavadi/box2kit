@@ -209,6 +209,7 @@ class MatchSearchTransfer():
         _, opt_index = match_search(mean_output.unsqueeze(0), self.codebook.outputs, 1)
 
         output = self.codebook.outputs[opt_index]
+        print(output.shape)
 
         return output
 
