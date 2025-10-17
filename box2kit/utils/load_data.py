@@ -79,7 +79,9 @@ def reshape_data(waveforms: list[torch.Tensor], segment_length: int) -> torch.Fl
         Basic usage:
 
         >>> x = [torch.ones(1, 256) for i in range(4)]
+    [tensor([[1, ..., 1]]), tensor([[1, ..., 1]]), tensor([[1, ..., 1]]), tensor([[1, ..., 1]])]
     >>> y = reshape_data(x, 128)
+    tensor([[[1, ..., 1]], ..., [[1, ..., 1]]])
     >>> y.shape
     tensor([8, 1, 128])
 
@@ -101,7 +103,7 @@ def reshape_data(waveforms: list[torch.Tensor], segment_length: int) -> torch.Fl
     return dataset
 
 
-def binary_split(data: torch.Tensor, split: float = 0.8):
+def binary_split(data: torch.Tensor, split: float = 0.8) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Randomly split array along dim 0 into two sub-arrays.
 
@@ -120,7 +122,7 @@ def binary_split(data: torch.Tensor, split: float = 0.8):
     return data[perm[:split_n]], data[perm[split_n:]]
 
 
-def safe_encode(data, codec, batch_size=8):
+def safe_encode(data, codec, batch_size=8) -> torch.Tensor:
     """
     encodes audio segments in mini-batches to reduce gpu memory usage
 
@@ -131,7 +133,7 @@ def safe_encode(data, codec, batch_size=8):
     return latents
 
 
-def safe_decode(data, codec, batch_size=8):
+def safe_decode(data, codec, batch_size=8) -> torch.Tensor:
     """
     decodes laten sequences in mini-batches to reduce gpu memory usage
 
@@ -142,11 +144,38 @@ def safe_decode(data, codec, batch_size=8):
     return latents
 
 
-def batch_partition(dataset, batch_size: int = 64):
+def batch_partition(dataset: torch.Tensor, batch_size: int = 64) -> torch.Tensor:
+    """
+    Partition stacked data points into list of mini-batches.
+
+    .. examples::
+        Basic usage:
+        
+        >>> x = torch.ones(4, 1, 2)
+    tensor([[[[1, 1]], [[1, 1]], [[1, 1]], [[1, 1]]])
+    >>> y = batch_partition(x, 1)
+    [tensor([[[1], [1]]]), tensor([[[1], [1]]]), tensor([[[1], [1]]]), tensor([[[1], [1]]])]
+
+    Args:
+        dataset (Tensor): Data point stack to partition.
+        batch_size (int): Number of data points in each mini batch
+    
+    Returns:
+        List of mini-batches.
+    """
     return [dataset[i:i+batch_size] for i in range(0, dataset.shape[0], batch_size)]
 
 
-def mkdir(dir_path: str):
+def mkdir(dir_path: str) -> str:
+    """
+    Create new directory if it does not already exist.
+
+    Args:
+        dir_path (str): Path to new directory.
+    
+    Returns:
+        dir_path (str): Path to new directory.
+    """
     try:
         os.mkdir(dir_path)
     except FileExistsError:
@@ -155,6 +184,19 @@ def mkdir(dir_path: str):
 
 
 def load_configs(config_dir: str, override_file: str = None) -> dict:
+    """
+    Load folder configuration files as dict.
+
+    The loaded dict will consist of multiple dict-valued entries,
+    whose keys correspond to the name of each configuration file,
+    and contain the file's respective configuration parameters.
+
+    Args:
+        config_dir (str): Path to folder containing `.yaml` configuration files.
+
+    Returns:
+        configs (dict): Loaded configuration parameters.
+    """
     default_folder = "default"
 
     with open(os.path.join(config_dir, default_folder, "global.yaml"), "r") as f:
@@ -179,6 +221,26 @@ def load_configs(config_dir: str, override_file: str = None) -> dict:
     return configs
 
 def match_trim(x: torch.Tensor, y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Trim two tensor at the end of dim -1 such that their dimensions match that of the shorter tensor.
+
+    .. examples::
+        Basic usage:
+
+        >>> x = torch.arange(4)
+        tensor([0, 1, 2, 3])
+        >>> y = torch.arange(5)
+        tensor([0, 1, 2, 3, 4])
+        >>> match_trim(x, y)
+        (tensor([0, 1, 2, 3]), tensor([0, 1, 2, 3]))
+
+    Args:
+        x (Tensor): First input tensor.
+        y (Tensor): Second input tensor.
+    
+    Returns:
+        Trimmed tensors.
+    """
     if x.shape[-1] > y.shape[-1]:
         x = x[..., :y.shape[-1]]
     elif x.shape[-1] < y.shape[-1]:
