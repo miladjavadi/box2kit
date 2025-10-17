@@ -601,7 +601,7 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
             stride (int): Stride length used in convolution.
             dilation (int): Dilation amount used in convolution.
             mode (str): Shift padding to achieve different modes of causality. One of:
-                * ´"centered"`: Pseudo-equal padding on both sides.
+                * `"centered"`: Pseudo-equal padding on both sides.
                 * `"causal"`: Padding at beginning only.
                 * `"anticausal"`: Padding at end only.
             
