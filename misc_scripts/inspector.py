@@ -1,4 +1,4 @@
-from box2kit.svae.model import TransferGAN
+from box2kit.waveenc.model import TransferGAN
 import numpy as np
 
 model = TransferGAN.load_from_checkpoint("outs/trialz.ckpt")

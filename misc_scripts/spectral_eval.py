@@ -1,5 +1,5 @@
 import audiotools
-from box2kit.utils.load_data import load_dir
+from box2kit.utils.load_data import load_dir, match_trim
 import pandas as pd
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from torch import nn
@@ -17,11 +17,14 @@ def main(args):
     mel_loss_fn = MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None], loss_fn=nn.MSELoss())
 
     if gen_fnames != ref_fnames:
-        raise Exception("File-name of generated audio folder must be identical to that of refernce wave audio folder.")
+        raise Exception("File names in generated audio folder must be identical to that of refernce wave audio folder.")
 
     dists = []
 
     for (gen_wave, ref_wave, fname) in zip(gen_waves, ref_waves, gen_fnames):
+        gen_wave, ref_wave = match_trim(gen_wave, ref_wave)
+        print(gen_wave.shape, ref_wave.shape)
+
         gen_AS = audiotools.AudioSignal(gen_wave, SAMPLE_RATE)
         ref_AS = audiotools.AudioSignal(ref_wave, SAMPLE_RATE)
 
