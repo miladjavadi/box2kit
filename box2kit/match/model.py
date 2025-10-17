@@ -229,5 +229,5 @@ def match_search(input, codebook, n):
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
 
-    min_dists, opt_indices = torch.sort(distances, dim=-1)[:n]
-    return min_dists, opt_indices
+    min_dists, opt_indices = torch.sort(distances, dim=-1)
+    return min_dists[:n], opt_indices[:n]
