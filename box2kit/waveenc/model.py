@@ -589,12 +589,25 @@ class LinterConvTranspose1D(nn.Module):
         return y
 
 
-def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered"):
+def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "centered") -> tuple[int]:
         """
-        Computes 'same' padding given a kernel size, stride an dilation.
+        Compute non-symmetric padding amount for preserving convolution output shape.
 
         Copied from cached_conv by IRCAM:
         https://github.com/acids-ircam/cached_conv/blob/master/cached_conv/convs.py
+
+        Args:
+            kernel_size (int): Size of convolution kernel used.
+            stride (int): Stride length used in convolution.
+            dilation (int): Dilation amount used in convolution.
+            mode (str): Shift padding to achieve different modes of causality. One of:
+                * ´"centered"`: Pseudo-equal padding on both sides.
+                * `"causal"`: Padding at beginning only.
+                * `"anticausal"`: Padding at end only.
+            
+        Returns:
+            p_left (int): Padding amount at beginning of signal.
+            p_right (int): Padding amount at end of signal.
         """
         if kernel_size == 1: return (0, 0)
         p = (kernel_size - 1) * dilation + 1
@@ -613,32 +626,39 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, mode = "ce
         return (p_left, p_right)
 
 
-def cos_annealed_beta(current_step, n_warmup_steps):
+def cos_annealed_beta(current_step: int, n_warmup_steps: int) -> float:
     return 0.5*(1- math.cos(current_step * math.pi / n_warmup_steps)) if current_step < n_warmup_steps else 1
 
 
-def lin_annealed_beta(current_step, total_steps):
+def lin_annealed_beta(current_step: int, total_steps: int) -> float:
     return min(1.0, current_step / total_steps)
 
 
-def warm_cos_annealed_beta(current_step, total_steps):
+def warm_cos_annealed_beta(current_step: int, total_steps: int) -> float:
     return 0.5*(1 - math.cos(current_step * 8 * math.pi / total_steps)) if (current_step*8//total_steps) % 2 == 0 else 1
 
 
-def kld_component(prior_mean: torch.Tensor, prior_log_var: torch.Tensor, post_mean: torch.Tensor, post_log_var: torch.Tensor):
+def kld_component(prior_mean: torch.Tensor, prior_log_var: torch.Tensor, post_mean: torch.Tensor, post_log_var: torch.Tensor) -> torch.Tensor:
     return torch.sum(torch.pow(post_mean - prior_mean, 2) + torch.exp(post_log_var - prior_log_var) - (post_log_var - prior_log_var) - 1, (-2))
 
 
-def mod_sigmoid(x):
+def mod_sigmoid(x: torch.Tensor) -> torch.Tensor:
     return 2 * torch.sigmoid(x)**2.3 + 1e-7
 
 
-def amp_to_impulse_response(amp, target_size):
+def amp_to_impulse_response(amp: torch.Tensor, target_size: int) -> torch.Tensor:
     """
-    transforms frequency amps to ir on the last dimension.
+    Transform filterbank weights to impulse responses on dim -1.
     
     Copied from IRCAM ACID'S RAVE:
     https://github.com/acids-ircam/RAVE/blob/master/rave/core.py
+
+    Args:
+        amp (Tensor): Filterbank weights.
+        target_size (int): Desired impulse response length.
+    
+    Output:
+        amp (Tensor): Impulse response.
     """
     amp = torch.stack([amp, torch.zeros_like(amp)], -1)
     amp = torch.view_as_complex(amp)
@@ -660,12 +680,19 @@ def amp_to_impulse_response(amp, target_size):
     return amp
 
 
-def fft_convolve(signal, kernel):
+def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """
-    convolves signal by kernel on the last dimension
+    Convolve signal with kernel on dim -1.
 
     Copied from IRCAM ACIDS' RAVE:
     https://github.com/acids-ircam/RAVE/blob/master/rave/core.py
+
+    Args:
+        signal (Tensor): Signal to convolve.
+        kernel (Tensor): Kernel to convolve with.
+    
+    Returns:
+        output (Tensor): Convolution output.
     """
     signal = nn.functional.pad(signal, (0, signal.shape[-1]))
     kernel = nn.functional.pad(kernel, (kernel.shape[-1], 0))
@@ -676,7 +703,18 @@ def fft_convolve(signal, kernel):
     return output
 
 
-def hinge_loss(score: torch.Tensor, label: float):
+def hinge_loss(score: torch.Tensor, label: float) -> torch.Tensor:
+    """
+    Return hinge loss from discriminator score-label discrepancy.
+
+    Args:
+        score (Tensor): Discriminator scores.
+        label (float): Labeled scores.
+    
+    Returns:
+        Hinge loss.
+    """
+
     zeros = torch.zeros_like(score)
     if label > 0:
         return torch.mean(torch.min(zeros, label - score))
@@ -684,10 +722,18 @@ def hinge_loss(score: torch.Tensor, label: float):
         return torch.mean(torch.min(zeros, -label + score))
     
 
-def critical_pad(signal: torch.Tensor, divisor: int):
+def critical_pad(signal: torch.Tensor, divisor: int) -> torch.Tensor:
     """
-    zero-pads the last dim of a signal such that its total length is perfectly divisible by an integer divisor.
-    good for making signals of arbitrary lengths compatible with critically sampled filterbanks, such as pqmf.
+    Zero-pad dim -1 of a tensor such that its total length is perfectly divisible by an integer divisor.
+    
+    Useful for making signals of arbitrary lengths compatible with critically sampled filterbanks, such as PQMF.
+
+    Args:
+        signal (Tensor): Tensor to pad.
+        divisor (int): Divisor with which to make signal compatible.
+    
+    Returns:
+        Padded signal.
     """
 
     return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
