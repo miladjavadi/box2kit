@@ -23,7 +23,6 @@ def main(args):
 
     for (gen_wave, ref_wave, fname) in zip(gen_waves, ref_waves, gen_fnames):
         gen_wave, ref_wave = match_trim(gen_wave, ref_wave)
-        print(gen_wave.shape, ref_wave.shape)
 
         gen_AS = audiotools.AudioSignal(gen_wave, SAMPLE_RATE)
         ref_AS = audiotools.AudioSignal(ref_wave, SAMPLE_RATE)
