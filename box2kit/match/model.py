@@ -183,7 +183,7 @@ class MatchSearchTransfer():
             output_array (Tensor[array idx., latent dim., frame idx.]): Generated array of output latent sequences.
         """
         with torch.no_grad():
-            output_array = torch.stack([self.transfer(target) for target in target_array], dim=0)
+            output_array = torch.stack([self.transfer(target, n) for target in target_array], dim=0)
 
         return output_array
     
@@ -212,9 +212,9 @@ class MatchSearchTransfer():
         return output
 
 
-def match_search(input, codebook):
+def match_search(input, codebook, n):
     """
-    Match an input latent sequence with its nearest neighboring entry in a codebook.
+    Match an input latent sequence with its `n` nearest neighboring entry in a codebook.
 
     Inputs are matched with the codebook entries nearest to them in Frobenius distance.
 
@@ -223,11 +223,11 @@ def match_search(input, codebook):
         codebook (Tensor[codeword, latent dim., frame idx.]): Codebook to match against.
 
     Returns:
-        min_dist (float): Frobenius distance between input and nearest neighboring codeword.
-        opt_index (int): Index in codebook of nearest neighboring codeword.
+        min_dist (float or ): Frobenius distance between input and `n` nearest neighboring codewords.
+        opt_index (int): Index in codebook of `n` nearest neighboring codeword.
     """
     differences = codebook - input
     distances = torch.linalg.norm(differences, axis=(-2, -1))
 
-    min_dist, opt_index = torch.min(distances, dim=-1)
-    return min_dist, opt_index
+    min_dists, opt_indices = torch.sort(distances, dim=-1)[:n]
+    return min_dists, opt_indices
