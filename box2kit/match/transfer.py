@@ -7,14 +7,14 @@ import os
 
 import box2kit.utils.load_data as uload
 
-def transfer(in_wave: torch.Tensor, order: int, codec: dac.DAC, gen_model: MatchSearchTransfer):
+def transfer(in_wave: torch.Tensor, order: int, codec: dac.DAC, gen_model: MatchSearchTransfer, batch_size: int = 8):
     sr = codec.sample_rate
     waveform_segment_length = gen_model.codebook.waveform_segment_length
 
     input_wave_segments = uload.reshape_data([in_wave.to(codec.device)], waveform_segment_length)
 
     input_latents = uload.safe_encode(input_wave_segments, codec)
-    output_latents = gen_model.transfer_array(input_latents, order)
+    output_latents = torch.cat([gen_model.transfer_array(latent_batch, order) for latent_batch in uload.batch_partition(input_latents, batch_size)], dim=-1)
     output_wave_segments = uload.safe_decode(output_latents, codec)
 
     output_wave = output_wave_segments.reshape(1, -1)
@@ -25,6 +25,7 @@ def main(args):
     input_dir = args.ins
     output_dir = args.out
     order = args.order
+    batch_size = 16
 
     uload.mkdir(output_dir)
 
@@ -40,7 +41,7 @@ def main(args):
             gen_model = MatchSearchTransfer(torch.load(experiment_name, map_location=device))
 
         for wave, file_name in zip(input_waves, file_names):
-            output = transfer(wave, order, codec, gen_model)
+            output = transfer(wave, order, codec, gen_model, batch_size)
             torchaudio.save(f"{output_dir}/{file_name}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
