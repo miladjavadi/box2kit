@@ -1,4 +1,5 @@
 descript_audio_codec
 torchaudio
+pandas
 lightning
 git+https://github.com/descriptinc/audiotools
