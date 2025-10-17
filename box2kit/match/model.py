@@ -8,11 +8,11 @@ class PairedCodebook():
     """
     Codebook of paired target-output latent sequence pairs.
 
+    Used for performing match search transfer.
+
     .. note::
             Both target- and output-domain coordinates should be provided for each point.
             Dim 1 in both the training_data and validation_data array corresponds to domain, with target-domain coordinates in [:, 0, ...], and output-domain coordinates in [:, 1, ...].
-    
-    Used for performing match search transfer.
 
     Args:
         training_set (tensor[data pt., domain, latent dim., frame idx.]): Dataset of training sequence pairs.

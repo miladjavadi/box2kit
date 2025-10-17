@@ -22,6 +22,18 @@ class PairedWaveformDataset(torch.utils.data.Dataset):
 
 
 def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
+    """
+    Load audio file as Torch tensor, averaged to mono.
+
+    The audio is resampled and clipped at 0dB.
+
+    Args:
+        file_name (str): Name of audio file to load
+        target_sr (int): Sample rate to resample audio to.
+
+    Returns:
+        audio (Tensor): Loaded mono waveform.
+    """
     audio, sr = torchaudio.load(file_name)
     if audio.shape[0] > 1:
         audio = audio.mean(0, keepdim=True)
@@ -34,32 +46,74 @@ def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
 
 
 def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
+    """
+    Load folder of `.wav` files as list of Torch tensors.
+
+    Each audio file is averaged to mono, resampled and clipped at 0dB.
+
+    .. seealso::
+        `load_mono` loads a single audio file as a tensor.
+
+    Args:
+        dir (str): Path to folder of `.wav` files to load.
+        target_sr (int): Sample rate to resample audio to.
+    
+    Returns:
+        waves (list of Tensor): Loaded waveforms.
+        wave_files (list of str): File names of loaded audio.
+    """
     files = sorted(os.listdir(dir))
     wav_files = [file for file in files if file[-4:] == ".wav"]
     waves = [load_mono((f"{dir}/{file}"), target_sr) for file in wav_files]
     return waves, wav_files
 
 
-def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.FloatTensor:
+def reshape_data(waveforms: list[torch.Tensor], segment_length: int) -> torch.FloatTensor:
     """
-    reshapes list of mono waveforms to a stack of audio segments
+    Reshape list of mono waveforms to a stack of equal-sized waveform segments.
 
+    .. note::
+        Each waveform is trimmed from the end at dim -1 to the nearest integer multiple of `block_length`. 
+
+    .. examples::
+        Basic usage:
+
+        >>> x = [torch.ones(1, 256) for i in range(4)]
+    >>> y = reshape_data(x, 128)
+    >>> y.shape
+    tensor([8, 1, 128])
+
+    Args:
+        waveforms (list of Tensor): List of waveforms to reshape.
+        segment_length (int): Length of each waveform segment.
     """
     # List([1 x waveform_length]) -> [n_blocks x 1 x block_lengths]
 
-    dataset = torch.zeros((0, 1, block_length)).to(waveforms[0].device)
+    dataset = torch.zeros((0, 1, segment_length)).to(waveforms[0].device)
     for waveform in waveforms:
         # trim waveform to whole number of block lengths
-        waveform = waveform[:,:((waveform.shape[1]//block_length)*block_length)]
+        waveform = waveform[:,:((waveform.shape[1]//segment_length)*segment_length)]
 
         # reshape waveform into blocks
-        blocks = torch.reshape(waveform, (-1, 1, block_length))
+        blocks = torch.reshape(waveform, (-1, 1, segment_length))
         dataset = torch.cat((dataset, blocks), dim=0)
     
     return dataset
 
 
-def binary_split(data, split=0.8):
+def binary_split(data: torch.Tensor, split: float = 0.8):
+    """
+    Randomly split array along dim 0 into two sub-arrays.
+
+    `split` determines the relative size of the first return sub-array.
+
+    Args:
+        data (Tensor): Array to split.
+        split (float): Relative split between sub-arrays
+    
+    Returns:
+        Resulting sub-arrays from split.
+    """
     n = data.size(0)
     perm = torch.randperm(n)
     split_n = int(n * split)
