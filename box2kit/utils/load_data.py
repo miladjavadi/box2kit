@@ -35,8 +35,9 @@ def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
 
 def load_dir(dir: str, target_sr: int) -> tuple[list[torch.Tensor], list[str]]:
     files = sorted(os.listdir(dir))
-    waves = [load_mono((f"{dir}/{file}"), target_sr) for file in files if file[-4:] == ".wav"]
-    return waves, files
+    wav_files = [file for file in files if file[-4:] == ".wav"]
+    waves = [load_mono((f"{dir}/{file}"), target_sr) for file in wav_files]
+    return waves, wav_files
 
 
 def reshape_data(waveforms: list[torch.Tensor], block_length: int) -> torch.FloatTensor:
