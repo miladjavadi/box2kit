@@ -7,11 +7,11 @@ import os
 
 import box2kit.utils.load_data as uload
 
-def transfer(dir: str, file: str, order: int, codec: dac.DAC, gen_model: MatchSearchTransfer):
+def transfer(in_wave: torch.Tensor, order: int, codec: dac.DAC, gen_model: MatchSearchTransfer):
     sr = codec.sample_rate
     waveform_segment_length = gen_model.codebook.waveform_segment_length
 
-    input_wave_segments = uload.reshape_data([uload.load_mono(f"{dir}/{file}", sr).to(codec.device)], waveform_segment_length)
+    input_wave_segments = uload.reshape_data([in_wave.to(codec.device)], waveform_segment_length)
 
     input_latents = uload.safe_encode(input_wave_segments, codec)
     output_latents = gen_model.transfer_array(input_latents, order)
@@ -26,9 +26,7 @@ def main(args):
     output_dir = args.out
     order = args.order
 
-    uload.mkdir(f"{output_dir}")
-
-    file_names = [file for file in sorted(os.listdir(input_dir)) if file[-4:] == ".wav"]
+    uload.mkdir(output_dir)
 
     with torch.inference_mode():
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,12 +34,14 @@ def main(args):
 
         model_sr = codec.sample_rate
 
+        input_waves, file_names = uload.load_dir(input_dir, model_sr)
+
         with torch.serialization.safe_globals([PairedCodebook]):
             gen_model = MatchSearchTransfer(torch.load(experiment_name, map_location=device))
 
-        for file in file_names:
-            output = transfer(input_dir, file, order, codec, gen_model)
-            torchaudio.save(f"{output_dir}/{file}", output.detach().cpu(), model_sr)
+        for wave, file_name in zip(input_waves, file_names):
+            output = transfer(wave, order, codec, gen_model)
+            torchaudio.save(f"{output_dir}/{file_name}", output.detach().cpu(), model_sr)
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Transform input audio data using pre-generated codebook.")
