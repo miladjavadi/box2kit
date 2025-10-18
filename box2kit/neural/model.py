@@ -14,11 +14,9 @@ from box2kit.utils.load_data import load_mono, reshape_data
 import dac
 import torchaudio
 
-### GENERATOR
-
 class Generator(nn.Module):
     """
-    Perform timbre transfer using a CNN on a target latent sequence.
+    CNN for transforming 1024-dimensional latent sequences.
     """
     def __init__(self):
         super(Generator, self).__init__()
@@ -46,7 +44,6 @@ class Generator(nn.Module):
     def forward(self, z):
         return self.main(z)
     
-### DISCRIMINATOR
 
 class DiscriminatorV2(nn.Module):
     """
@@ -127,21 +124,38 @@ class DownConvolver(nn.Module):
 
     def forward(self, x):
         return self.net(x)
-    
 
-### LIGHTNING MODULE
 
 class DACGANV2(pl.LightningModule):
+    """
+    PyTorch Lightning module for adversarially training a CNN to map target-domain latent sequences to output-domain latent sequences.
+
+    Training uses datasets of *paired* target and output audio signals.
+
+    Args:
+        input_segment_length (int): Length of pre-encoded audio segments.
+        output_segment_length (int): Length of generated/reconstructed audio segments.
+        nframes (int): (Unused) Length of encoded latent sequences.
+        spectrum_dims (list of int): Dimensions of STFTs passed to discriminator ([n fft bins, n frames]).
+        nfft (int): (Unused) Number of FFT bins in STFTs passed to discriminator.
+        beta (float): Weight of latent space distance loss in generator loss function.
+        phi (float): Weight of adversarial loss in generator loss function.
+        codec (DAC): Codec used to encode latent space representations.
+        stft_loss_fn (nn.Module): Loss function to use for multi-scale STFT loss.
+        mel_loss_fn (nn.Module): Loss function to use for Mel spectrogram loss.
+        warmup (int): Number of epochs before discriminator is initialized.
+        lr (float): Learning rate for Adam optimizers.
+    """
     def __init__(self,
-                 input_block_length: int,
-                 output_block_lengths: int,
+                 input_segment_length: int,
+                 output_segment_length: int,
                  nframes: int,
                  spectrum_dims: list[int],
                  nfft: int = None,
-                 lambda_embedding: float = 1,
-                 lambda_adversarial: float = 1,
+                 beta: float = 1,
+                 phi: float = 1,
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
-                 spectral_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
+                 stft_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
                  mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None], loss_fn=nn.MSELoss()),
                  warmup: int = 250,
                  lr = 1e-4):
@@ -152,18 +166,18 @@ class DACGANV2(pl.LightningModule):
         self.sr = codec.sample_rate
         self.lr = lr
 
-        self.spectral_loss_fn = spectral_loss_fn
+        self.stft_loss_fn = stft_loss_fn
         self.mel_loss_fn = mel_loss_fn
         self.embedding_loss_fn = nn.MSELoss()
         # self.adversarial_loss_fn = hinge_loss
         self.adversarial_loss_fn = nn.BCELoss()
 
-        self.lambda_embedding = lambda_embedding
-        self.lambda_adversarial = lambda_adversarial
+        self.beta = beta
+        self.phi = phi
         self.warmup = warmup
 
-        self.input_block_length = input_block_length
-        self.output_block_length = output_block_lengths
+        self.input_block_length = input_segment_length
+        self.output_block_length = output_segment_length
         self.nframes = nframes
 
         self.adversarial_phase = False
@@ -223,7 +237,7 @@ class DACGANV2(pl.LightningModule):
         else:
             adversarial_loss = 0
 
-        generator_loss = spectral_loss + self.lambda_embedding * embedding_loss + self.lambda_adversarial * adversarial_loss
+        generator_loss = spectral_loss + self.beta * embedding_loss + self.phi * adversarial_loss
         self.manual_backward(generator_loss)
         gen_optimizer.step()
         self.untoggle_optimizer(gen_optimizer)
@@ -286,7 +300,17 @@ class DACGANV2(pl.LightningModule):
     def on_validation_epoch_start(self):
         self.codec.eval()
 
+
 class GenerationCallback(Callback):
+    """
+    Periodically generate output audio data from a test target audio file.
+
+    Args:
+        segment_length (int): Segment length to divide audio into.
+        test_file (str): Path to test target audio file.
+        out_dir (str): Path to directory for saving generated output audio.
+        test_freq (int): How often, in epochs, to generate output audio. 
+    """
     def __init__(self, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
         self.test_freq = test_freq
@@ -339,8 +363,6 @@ class GenerationCallback(Callback):
         return super().on_train_epoch_end(trainer, pl_module)
         
 
-### UTILITY FUNCTIONS
-
 def get_padding(kernel_size, stride=1, dilation=1):
     effective_kernel = (kernel_size - 1) * dilation + 1
     pad_total = max(effective_kernel - stride, 0)
@@ -348,12 +370,14 @@ def get_padding(kernel_size, stride=1, dilation=1):
     pad_right = pad_total - pad_left
     return (pad_left, pad_right)
 
+
 def hinge_loss(score: torch.Tensor, label: float):
     zeros = torch.zeros_like(score)
     if label > 0:
         return torch.mean(torch.min(zeros, label - score))
     else:
         return torch.mean(torch.min(zeros, -label + score))
+
 
 if __name__ == "__main__":
     x = torch.randn(4, 1024, 10000)
