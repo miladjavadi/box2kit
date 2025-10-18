@@ -278,11 +278,6 @@ class DACGANV2(pl.LightningModule):
     def on_train_epoch_start(self):
         self.codec.eval()
         self.adversarial_phase = True if self.current_epoch >= self.warmup else False
-        if self.adversarial_phase:
-            # freeze encoder parameters
-            self.generator.outer2hid.requires_grad_ = False
-            self.generator.hid2mu_inner.requires_grad_ = False
-            self.generator.hid2sigma_inner.requires_grad_ = False
         return super().on_train_epoch_start()
 
     def on_fit_epoch_start(self):
