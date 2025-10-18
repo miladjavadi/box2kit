@@ -14,8 +14,29 @@ from box2kit.neural.model import DiscriminatorV2
 import os
 
 class LightningVAE(pl.LightningModule):
+    """
+    PyTorch Lightning module for training a PQMF-to-PQMF VAE to reconstruct input audio signals.
+
+    The order of `nkernels`, `kernel_sizes`, and `strides` are reversed for the sequence of decoding stacks.
+
+    Args:
+        segment_length (int): Length of each audio waveform.
+        pqmf (PQMF): PQMF transform model to use.
+        sample_rate (int): Sample rate of audio signals.
+        nkernels (list of int): Number of kernels to use in each convolutional encoding stack.
+        kernel_sizes (list of int): Length of kernels to use in each convolutional encoding stack.
+        zdim (int): Number of latent space dimensions.
+        nchannels (int): Number of audio channels (only mono has been tested).
+        strides (list of int): Convolution stride lengths in each encoding stack.
+        dilations (list of int): Dilation amount for each convolutional layer in the residual stacks.
+        nmog (int): Number of modes in trainable Mixture-of-Gaussians prior. Use 0 for standard distribution prior.
+        mel_loss_fn (nn.Module): Loss function to use for Mel spectrogram loss.
+        full_stft_loss_fn (nn.Module): Loss function to use for fullband multi-scale STFT loss.
+        mb_stft_loss_fn (nn.Module): Loss function to use for multiband multi-scal STFT loss.
+        lr (float): Learning rate for Adam optimizer.
+    """
     def __init__(self,
-                 block_length: int,
+                 segment_length: int,
                  pqmf: PQMF = PQMF(),
                  sample_rate: int = 44100,
                  nkernels: list[int] = [64, 128, 256, 512],
@@ -25,10 +46,10 @@ class LightningVAE(pl.LightningModule):
                  strides: list[int] = [4, 4, 4, 2],
                  dilations: list[int] = [1, 3, 9],
                  nmog: int = 0,
-                 mel_loss_fn = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
-                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
-                 mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
-                 lr = 1e-4):
+                 mel_loss_fn: nn.Module = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
+                 full_stft_loss_fn: nn.Module = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 mb_stft_loss_fn: nn.Module = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
+                 lr: float = 1e-4):
         super().__init__()
         
         self.model = PQMFVAE(pqmf,
@@ -45,7 +66,7 @@ class LightningVAE(pl.LightningModule):
         self.mel_loss_fn = mel_loss_fn
         self.full_stft_loss_fn = full_stft_loss_fn
         self.mb_stft_loss_fn = mb_stft_loss_fn
-        self.block_length = block_length
+        self.block_length = segment_length
 
         self.save_hyperparameters(ignore=["pqmf", "full_stft_loss_fn", "mb_stft_loss_fn", "mel_loss_fn"])
 
@@ -83,6 +104,30 @@ class LightningVAE(pl.LightningModule):
     
 
 class TransferGAN(LightningVAE):
+    """
+    PyTorch Lightning module for training a PQMF-to-PQMF VAE to generate output-domain audio data from target-domain latent vectors.
+
+    The order of `nkernels`, `kernel_sizes`, and `strides` are reversed for the sequence of decoding stacks.
+    Training uses datasets of *paired* target and output audio signals.
+
+    Args:
+        segment_length (int): Length of each audio waveform.
+        pqmf (PQMF): PQMF transform model to use.
+        sample_rate (int): Sample rate of audio signals.
+        nkernels (list of int): Number of kernels to use in each convolutional encoding stack.
+        kernel_sizes (list of int): Length of kernels to use in each convolutional encoding stack.
+        zdim (int): Number of latent space dimensions.
+        nchannels (int): Number of audio channels (only mono has been tested).
+        strides (list of int): Convolution stride lengths in each encoding stack.
+        dilations (list of int): Dilation amount for each convolutional layer in the residual stacks.
+        nmog (int): Number of modes in trainable Mixture-of-Gaussians prior. Use 0 for standard distribution prior.
+        mel_loss_fn (nn.Module): Loss function to use for Mel spectrogram loss.
+        full_stft_loss_fn (nn.Module): Loss function to use for fullband multi-scale STFT loss.
+        mb_stft_loss_fn (nn.Module): Loss function to use for multiband multi-scal STFT loss.
+        lr (float): Learning rate for Adam optimizer.
+        phi (float): Weight of adversarial loss in generator loss function.
+        beta (float): Weight of Kullback-Leibler divergence in generator loss function.
+    """
     def __init__(self,
                  block_length: int,
                  discriminator_dims: list[int],
@@ -229,8 +274,21 @@ class TransferGAN(LightningVAE):
 # current
 class PQMFVAE(nn.Module):
     """
-    PQMF-to-waveform VAE model based on IRCAM's RAVE:
+    PQMF-to-PQMF VAE model.
+    
+    Based on IRCAM's RAVE:
     https://github.com/acids-ircam/RAVE/
+
+    Args:
+        pqmf (PQMF): PQMF transform model to use.
+        sample_rate (int): Sample rate of audio signals.
+        nkernels (list of int): Number of kernels to use in each convolutional encoding stack.
+        kernel_sizes (list of int): Length of kernels to use in each convolutional encoding stack.
+        zdim (int): Number of latent space dimensions.
+        nchannels (int): Number of audio channels (only mono has been tested).
+        strides (list of int): Convolution stride lengths in each encoding stack.
+        dilations (list of int): Dilation amount for each convolutional layer in the residual stacks.
+        nmog (int): Number of modes in trainable Mixture-of-Gaussians prior. Use 0 for standard distribution prior.
     """
     def __init__(self,
                  pqmf: PQMF = PQMF(),
@@ -312,6 +370,16 @@ class PQMFVAE(nn.Module):
 
 
 class MOGPrior(nn.Module):
+    """
+    Trainable Mixture-of-Gaussians prior distribution for VAEs.
+
+    Kullback-Leibler divergence is estimated to an upper bound using the derivation presented in
+    DOI:10.1109/ICASSP.2012.6289001.
+
+    Args:
+        zdim (int): Number of latent space dimensions.
+        n_components (int): Number of Gaussian modes in prior.
+    """
     def __init__(self, zdim: int, n_components: int):
         super().__init__()
 
@@ -519,11 +587,20 @@ class NoiseGenerator(nn.Module):
 
 
 class GenerationCallback(Callback):
-    def __init__(self, block_length: int, test_file: str, out_dir: str, test_freq: int = 5):
+    """
+    Periodically generate output audio data from a test target audio file.
+
+    Args:
+        segment_length (int): Segment length to divide audio into.
+        test_file (str): Path to test target audio file.
+        out_dir (str): Path to directory for saving generated output audio.
+        test_freq (int): How often, in epochs, to generate output audio. 
+    """
+    def __init__(self, segment_length: int, test_file: str, out_dir: str, test_freq: int = 5):
         self.test_file = test_file
         self.test_freq = test_freq
         self.out_dir = out_dir
-        self.block_length = block_length
+        self.block_length = segment_length
 
         self.output_test = self.test_file is not None and self.out_dir is not None
 
