@@ -11,7 +11,6 @@ from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 import yaml
-
 import dac
 import torchaudio
 from box2kit.neural.model import DACGANV2, GenerationCallback
@@ -19,19 +18,6 @@ from box2kit.utils.callbacks import DelayedEarlyStopping
 from box2kit.utils.load_data import mkdir, load_configs, reshape_data
 from box2kit.utils.preload import PairedLatentSequenceDataset
 from box2kit.utils.checkpoints import get_checkpoint_path
-
-# Load audio file
-def load_mono(file_name: str, target_sr: int) -> torch.Tensor:
-    audio, sr = torchaudio.load(file_name)
-    if audio.shape[0] > 1:
-        audio = audio.mean(0, keepdim=True)
-
-    if sr != target_sr:
-        audio = torchaudio.functional.resample(audio, sr, target_sr)
-        sr = target_sr
-    audio = audio.clamp(-1, 1)
-    return audio
-
 
 def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str, codec: dac.DAC) -> torch.utils.data.DataLoader:
     paired_dataset = PairedLatentSequenceDataset(query_dir, target_dir, block_length_in_samples, model_sr, codec, batch_size)
