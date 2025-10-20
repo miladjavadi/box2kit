@@ -280,7 +280,7 @@ class DACGANV2(pl.LightningModule):
         gen_AS = AudioSignal(gen_audio, self.sr)
         output_AS = AudioSignal(output_trim, self.sr)
 
-        val_loss = self.mel_loss_fn(gen_AS, output_AS)
+        val_loss = self.stft_loss_fn(gen_AS, output_AS) + self.mel_loss_fn(gen_AS, output_AS)
 
         self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
