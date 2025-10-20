@@ -2,6 +2,7 @@ import torch
 
 class MultiScaleSpectralDistance(torch.nn.Module):
     def __init__(self, window_lengths: list[int]):
+        super().__init__()
         self.windows_lengths = window_lengths
 
     def spectral_distance(self, x, y, window_length):
