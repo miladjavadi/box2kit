@@ -223,8 +223,8 @@ class DACGANV2(pl.LightningModule):
         gen_AS = AudioSignal(gen_audio, self.sr)
         output_AS = AudioSignal(output_trim, self.sr)
 
-        # spectral_loss = self.spectral_loss_fn(gen_AS, target_AS) + self.mel_loss_fn(gen_AS, target_AS)
-        spectral_loss = self.mel_loss_fn(gen_AS, output_AS)
+        spectral_loss = self.stft_loss_fn(gen_AS, output_AS) + self.mel_loss_fn(gen_AS, output_AS)
+        # spectral_loss = self.mel_loss_fn(gen_AS, output_AS)
         embedding_loss = self.embedding_loss_fn(gen_latents, output_latents)
 
         if self.adversarial_phase:
