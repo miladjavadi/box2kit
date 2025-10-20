@@ -8,6 +8,7 @@ from pytorch_lightning.callbacks import Callback
 import torchaudio
 from box2kit.utils.load_data import load_dir, reshape_data, load_mono
 from box2kit.waveenc.rave_pqmf import PQMF
+from box2kit.utils.loss import MultiScaleSpectralDistance
 from audiotools import AudioSignal
 from dac.nn.loss import MultiScaleSTFTLoss, MelSpectrogramLoss
 from box2kit.neural.model import DiscriminatorV2
@@ -141,7 +142,7 @@ class TransferGAN(LightningVAE):
                  dilations: list[int] = [1, 3, 9],
                  nmog: int = 0,
                  mel_loss_fn = MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0,0,0,0,0,0,0], mel_fmax=[None,None,None,None,None,None,None]),
-                 full_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[2048, 1024, 512, 256, 128]),
+                 full_stft_loss_fn = MultiScaleSpectralDistance([4096, 2048, 1024, 512, 256, 128, 64, 32]),
                  mb_stft_loss_fn = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4,
                  phi: float = 1,
@@ -185,13 +186,12 @@ class TransferGAN(LightningVAE):
         y_hat, mu, log_var = self.model(x)
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
+        y = y_hat[:,:,:y.shape[2]]
 
-        # generator losses
-        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
-        fullband_reconstruction_loss = self.mel_loss_fn(y_hat_AS, y_AS) + self.full_stft_loss_fn(y_hat_AS, y_AS)
+        # gen_mb_AS = AudioSignal(self.pqmf(y_hat), self.sr)
+        # output_mb_AS = AudioSignal(self.pqmf(y), self.sr)
 
-        multiband_reconstruction_loss = self.mb_stft_loss_fn(AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr), AudioSignal(self.model.pqmf(critical_pad(y, 16)), self.model.sr))
-        reconstruction_loss = fullband_reconstruction_loss + multiband_reconstruction_loss
+        spectral_loss = self.stft_loss_fn(y_hat, y)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
 
         kl_div = torch.mean(self.model.prior(mu, log_var), dim=0) 
 
@@ -208,7 +208,7 @@ class TransferGAN(LightningVAE):
 
         # backprop
         beta = self.beta_max * cos_annealed_beta(self.trainer.current_epoch, self.trainer.max_epochs/4)
-        gen_loss = reconstruction_loss + beta*kl_div + self.lambda_adversarial * adversarial_loss
+        gen_loss = spectral_loss + beta*kl_div + self.lambda_adversarial * adversarial_loss
 
         gen_optimizer.zero_grad()
         self.manual_backward(gen_loss)
@@ -238,7 +238,7 @@ class TransferGAN(LightningVAE):
 
         self.log("d_loss", discr_loss, prog_bar=True, on_step = False, on_epoch=True, logger=True)
         self.log("g_loss", gen_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
-        self.log("recon_loss", reconstruction_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        self.log("recon_loss", spectral_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("kld", kl_div, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("beta", beta, prog_bar=True, on_step=False, on_epoch=True, logger=True)
         self.log("adv_loss", adversarial_loss, prog_bar=True, on_step=False, on_epoch=True, logger=True)
@@ -260,8 +260,12 @@ class TransferGAN(LightningVAE):
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # generator losses
-        y_hat_AS, y_AS = AudioSignal(y_hat, self.model.sr), AudioSignal(y, self.model.sr)
-        val_loss = self.mel_loss_fn(y_hat_AS, y_AS)
+        gen_AS = AudioSignal(y_hat, self.sr)
+        output_AS = AudioSignal(y, self.sr)
+        # gen_mb_AS = AudioSignal(self.pqmf(y_hat), self.sr)
+        # output_mb_AS = AudioSignal(self.pqmf(critical_pad(y, 16)), self.sr)
+
+        val_loss = self.stft_loss_fn(gen_AS, output_AS)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
 
         self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
@@ -342,9 +346,8 @@ class PQMFVAE(nn.Module):
         self.prior = MOGPrior(zdim, nmog)
 
     def encode(self, x):
-        x_pad = critical_pad(x, 16)
         # x_pad = x[..., :((x.shape[-1]//16)*16)]
-        x_mb = self.pqmf(x_pad)
+        x_mb = self.pqmf(x)
 
         h = self.pqmf2hid(x_mb)
 
@@ -360,11 +363,13 @@ class PQMFVAE(nn.Module):
         return x_hat
     
     def forward(self, x):
-        mu, log_var = self.encode(x)
+        x_pad, pad_amount = critical_pad(x, 16)
+        mu, log_var = self.encode(x_pad)
         epsilon = torch.randn_like(log_var)
 
         z_reparam = mu + torch.sqrt(torch.exp(log_var))*epsilon
         x_hat = torch.tanh(self.decode(z_reparam))
+        x_hat = x_hat[...,:-pad_amount]
 
         return x_hat, mu, log_var
 
@@ -810,10 +815,14 @@ def critical_pad(signal: torch.Tensor, divisor: int) -> torch.Tensor:
         divisor (int): Divisor with which to make signal compatible.
     
     Returns:
-        Padded signal.
+        padded_signal (Tensor): Padded signal.
+        pad_amount (int): Amount of padding applied.
     """
+    
+    pad_amount = divisor-(signal.shape[-1] % divisor)
+    padded_signal = torch.nn.functional.pad(signal, [0, pad_amount])
 
-    return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
+    return padded_signal, pad_amount
 
 
 if __name__ == "__main__":

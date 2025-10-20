@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 from audiotools import AudioSignal
 from pytorch_lightning.callbacks import Callback
 from box2kit.utils.load_data import load_mono, reshape_data
+from box2kit.utils.loss import MultiScaleSpectralDistance
 
 import dac
 import torchaudio
@@ -155,7 +156,7 @@ class DACGANV2(pl.LightningModule):
                  beta: float = 1,
                  phi: float = 1,
                  codec: dac.DAC = dac.DAC.load(dac.utils.download()).to("cuda") if torch.cuda.is_available() else dac.DAC.load(dac.utils.download()).to("cpu"),
-                 stft_loss_fn = dac.nn.loss.MultiScaleSTFTLoss([2048, 1024, 512, 256, 128, 64]),
+                 stft_loss_fn = MultiScaleSpectralDistance([4096, 2048, 1024, 512, 256, 128, 64]),
                  mel_loss_fn = dac.nn.loss.MelSpectrogramLoss(window_lengths=[32, 64, 128, 256, 512, 1024, 2048], n_mels = [5, 10, 20, 40, 80, 160, 320], mel_fmin=[0], mel_fmax=[None], loss_fn=nn.MSELoss()),
                  mb_stft_loss_fn = dac.nn.loss.MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  warmup: int = 250,
@@ -222,10 +223,7 @@ class DACGANV2(pl.LightningModule):
         # calculate generator losses
         gen_optimizer.zero_grad()
 
-        gen_AS = AudioSignal(gen_audio, self.sr)
-        output_AS = AudioSignal(output_trim, self.sr)
-
-        spectral_loss = self.stft_loss_fn(gen_AS, output_AS) + self.mb_stft_loss_fn(gen_AS, output_AS) + self.mel_loss_fn(gen_AS, output_AS)
+        spectral_loss = self.stft_loss_fn(gen_audio, output_trim)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
         # spectral_loss = self.mel_loss_fn(gen_AS, output_AS)
         embedding_loss = self.embedding_loss_fn(gen_latents, output_latents)
 
@@ -279,10 +277,7 @@ class DACGANV2(pl.LightningModule):
             gen_audio = self.codec.decode(gen_latents)
             output_trim = output_audio[:,:,:gen_audio.shape[-1]]
 
-        gen_AS = AudioSignal(gen_audio, self.sr)
-        output_AS = AudioSignal(output_trim, self.sr)
-
-        val_loss = self.stft_loss_fn(gen_AS, output_AS) + self.mel_loss_fn(gen_AS, output_AS)
+        val_loss = self.stft_loss_fn(gen_audio, output_trim)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
 
         self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
@@ -379,6 +374,23 @@ def hinge_loss(score: torch.Tensor, label: float):
         return torch.mean(torch.min(zeros, label - score))
     else:
         return torch.mean(torch.min(zeros, -label + score))
+    
+
+def critical_pad(signal: torch.Tensor, divisor: int) -> torch.Tensor:
+    """
+    Zero-pad dim -1 of a tensor such that its total length is perfectly divisible by an integer divisor.
+    
+    Useful for making signals of arbitrary lengths compatible with critically sampled filterbanks, such as PQMF.
+
+    Args:
+        signal (Tensor): Tensor to pad.
+        divisor (int): Divisor with which to make signal compatible.
+    
+    Returns:
+        Padded signal.
+    """
+
+    return torch.nn.functional.pad(signal, [0, divisor-(signal.shape[-1] % divisor)])
 
 
 if __name__ == "__main__":
