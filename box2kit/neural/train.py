@@ -19,9 +19,9 @@ from box2kit.utils.load_data import mkdir, load_configs, reshape_data
 from box2kit.utils.preload import PairedLatentSequenceDataset
 from box2kit.utils.checkpoints import get_checkpoint_path
 
-def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str, codec: dac.DAC) -> torch.utils.data.DataLoader:
+def prepare_dataloader(query_dir: str, target_dir: str, block_length_in_samples: int, batch_size: int, model_sr: int, device: str, codec: dac.DAC, shuffle: bool = False) -> torch.utils.data.DataLoader:
     paired_dataset = PairedLatentSequenceDataset(query_dir, target_dir, block_length_in_samples, model_sr, codec, batch_size)
-    dataloader = torch.utils.data.DataLoader(paired_dataset, batch_size=batch_size, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(paired_dataset, batch_size=batch_size, shuffle=shuffle)
 
     return dataloader
 
@@ -71,7 +71,7 @@ def main(args, configs):
     block_length_in_samples = int(sample_rate*60/(tempo*subdiv/4))
 
     print("Loading training data...")
-    train_loader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE, codec)
+    train_loader = prepare_dataloader(train_target_dir, train_output_dir, block_length_in_samples, batch_size, sample_rate, DEVICE, codec, True)
 
     if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
         print("Loading validation data...")

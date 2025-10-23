@@ -63,7 +63,7 @@ def main(args, configs):
 
     if os.path.exists(val_target_dir) and os.path.exists(val_output_dir):
         val_dataset = PairedWaveformDataset(val_target_dir, val_output_dir, segment_length, sample_rate)
-        val_loader = DataLoader(dataset=val_dataset, batch_size = batch_size, shuffle=True)
+        val_loader = DataLoader(dataset=val_dataset, batch_size = batch_size)
     else:
         print("No validation data found, skipping model validation.")
         val_loader = None
@@ -73,7 +73,7 @@ def main(args, configs):
         dummy = train_dataset[0][0]
         dummy_stft = torch.stft(dummy.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=dummy.device)).abs()
 
-    model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta, zdim=32)
+    model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta)
 
     # load from previously saved checkpoint, if provided
     # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None

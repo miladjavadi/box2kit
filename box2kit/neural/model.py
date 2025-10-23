@@ -194,7 +194,7 @@ class DACGANV2(pl.LightningModule):
         self.codec.eval()
         self.codec.requires_grad_(False)
 
-        self.save_hyperparameters(ignore=["codec", "spectral_loss_fn", "mel_loss_fn"])
+        self.save_hyperparameters(ignore=["codec", "spectral_loss_fn", "mel_loss_fn", "stft_loss_fn", "mb_stft_loss_fn"])
     
     def initialize_models(self, spectrum_dims: list[int], nfft: int = None):
         generator = Generator()

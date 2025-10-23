@@ -48,7 +48,7 @@ class LightningVAE(pl.LightningModule):
                  dilations: list[int] = [1, 3, 9],
                  nmog: int = 0,
                  mel_loss_fn: nn.Module = MelSpectrogramLoss(window_lengths=[4096, 2048, 1024, 512, 256], n_mels = [320, 160, 80, 40, 20], mel_fmin=[0,0,0,0,0], mel_fmax=[None,None,None,None,None]),
-                 full_stft_loss_fn: nn.Module = MultiScaleSTFTLoss(window_lengths=[1024, 512, 256, 128, 64, 32]),
+                 full_stft_loss_fn: nn.Module = MultiScaleSpectralDistance([4096, 2048, 1024, 512, 256, 128, 64, 32]),
                  mb_stft_loss_fn: nn.Module = MultiScaleSTFTLoss(window_lengths=[128, 64, 32, 16]),
                  lr: float = 1e-4):
         super().__init__()
@@ -186,12 +186,11 @@ class TransferGAN(LightningVAE):
         y_hat, mu, log_var = self.model(x)
         
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
-        y = y_hat[:,:,:y.shape[2]]
 
         # gen_mb_AS = AudioSignal(self.pqmf(y_hat), self.sr)
         # output_mb_AS = AudioSignal(self.pqmf(y), self.sr)
 
-        spectral_loss = self.stft_loss_fn(y_hat, y)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
+        spectral_loss = self.full_stft_loss_fn(y_hat, y)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
 
         kl_div = torch.mean(self.model.prior(mu, log_var), dim=0) 
 
@@ -260,12 +259,10 @@ class TransferGAN(LightningVAE):
         y_hat = y_hat[:,:,:y.shape[2]] # the model works on frames of length (strides x pqmf_bands) = 4x4x4x2x16 = 2048 samples
 
         # generator losses
-        gen_AS = AudioSignal(y_hat, self.sr)
-        output_AS = AudioSignal(y, self.sr)
         # gen_mb_AS = AudioSignal(self.pqmf(y_hat), self.sr)
         # output_mb_AS = AudioSignal(self.pqmf(critical_pad(y, 16)), self.sr)
 
-        val_loss = self.stft_loss_fn(gen_AS, output_AS)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
+        val_loss = self.full_stft_loss_fn(y_hat, y)# + self.mb_stft_loss_fn(gen_mb_AS, output_mb_AS)# + self.mel_loss_fn(gen_AS, output_AS)
 
         self.log("val_loss", val_loss, prog_bar=True, logger=True)
     
@@ -575,7 +572,7 @@ class NoiseGenerator(nn.Module):
         in_len = x.shape[-1]
         # noise synthesis will be truncated to nearest multiple of self.target_size.
         # to compensate, we first pad signal to next multiple...
-        x = critical_pad(x, self.target_size)
+        x, _ = critical_pad(x, self.target_size)
         amp = mod_sigmoid(self.net(x) - 5)
         amp = amp.permute(0, 2, 1)
         amp = amp.reshape(amp.shape[0], amp.shape[1], self.n_channels * self.data_size, -1)
