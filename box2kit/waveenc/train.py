@@ -73,7 +73,7 @@ def main(args, configs):
         dummy = train_dataset[0][0]
         dummy_stft = torch.stft(dummy.squeeze(1), NFFT, return_complex=True, window=torch.hann_window(NFFT, device=dummy.device)).abs()
 
-    model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta)
+    model = TransferGAN(segment_length, [dummy_stft.shape[1], dummy_stft.shape[2]], nmog=nmog, lr=lr, phi=phi, warmup=warmup, beta=beta, zdim=32)
 
     # load from previously saved checkpoint, if provided
     # ckpt = get_checkpoint_path(ckpt_load, "step", True) if ckpt_load is not None else None
