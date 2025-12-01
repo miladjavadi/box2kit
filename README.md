@@ -52,6 +52,9 @@ which maps target latent vectors $p[i]$ to symbolically equivalent output vector
 The waveform autoencoder used in this project is mostly a recreation of the [Realtime Variational Autoencoder (RAVE)](https://github.com/acids-ircam/RAVE).
 The main difference is that this implementation is adapted for cross-instrumental synthesis using paired training data, rather than identical reconstruction.
 
+## Demonstration
+[Generated example recordings featuring each model type can be found here.](https://miladjavadi.github.io/)
+
 ## Usage
 The four model types presented [above](#model-types) are implemented as sub-packages inside the ```box2kit``` package.
 Each sub-package contains the model declaration ```model.py```, a training script ```training.py```, and a post-training transfer script ```transfer.py```.
@@ -150,6 +153,3 @@ Input files must be contained in a folder, pointed to by the second positional a
 
 For ```match``` models, ```--order``` can be used to specify the order of the match search transfer algorithm.
 For ```neural``` and ```affine``` models, ```--rq``` can be used to requantize the generated DAC-latents using DAC's RVQ.
-
-## Demonstration
-Coming soon!
