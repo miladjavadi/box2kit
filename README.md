@@ -102,7 +102,7 @@ The training scripts only look for ```.wav```-files, and will ignore files with 
 The preferred structure of the dataset directory can be configured in ```box2kit/configs/.../global.yaml```.
 
 ### Model Training
-All models follow a common naming/syntax conventions.
+All models follow a common naming/syntax convention.
 A model can be trained by calling the ```train``` submodule inside their respective subpackage:
 ```
 python -m box2kit.<model_type>.train path/to/data --name experiment_name --test path/to/test_file 
