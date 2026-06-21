@@ -25,7 +25,7 @@ There are two main reasons for this.
 Firstly, by using DAC as an interface for our models, we effectively bypass the need for our models to learn feature representation, as this is already accomplished by DAC.
 This potentially allows us to create sparser models, that are faster to train and less prone to overfitting when data is sparse, as is often the case for paired data modeling.
 Secondly, DAC uses a learned Residual Vector Quantization (RVQ) quantization system to compress encoded signals.
-This effectively restricts the output of the codec to "realistic"---or domain-relevant---frames of audio.
+This effectively restricts the output of the codec to in-domain, "realistic" frames of audio.
 In turn, this may allow us to "correct" for slight inaccuracies in the output of our models.
 
 A fourth model type, the *waveform autoencoder*, is a full waveform-to-waveform Variational Autoencoder (VAE).
