@@ -102,7 +102,7 @@ The training scripts only look for ```.wav```-files, and will ignore files with 
 The preferred structure of the dataset directory can be configured in ```box2kit/configs/.../global.yaml```.
 
 ### Model Training
-All models follow the same naming/syntax conventions.
+All models follow a common naming/syntax conventions.
 A model can be trained by calling the ```train``` submodule inside their respective subpackage:
 ```
 python -m box2kit.<model_type>.train path/to/data --name experiment_name --test path/to/test_file 
@@ -144,7 +144,7 @@ user@puter:<project_dir>$ python -m box2kit.<model_type>.train path/to/data --na
 Logs from the resumed model will be saved as a new version under the specified experiment name.
 
 ### Timbre Transfer
-Similar to for training, all model type subpackages contain a respective ```transfer``` script, which follows a common syntax:
+Similar to for training, all model type subpackages contain respective ```transfer``` scripts, which follow a common syntax:
 ```
 python -m box2kit.<model_type>.transfer checkpoint/path.ckpt input/files --out output/files
 ```
